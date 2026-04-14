@@ -1,26 +1,114 @@
+/* src/app/globals.css */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+/* Tailwind v4 核心 */
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* 强制 Tailwind 的 dark: 前缀跟随 .dark 类名，而不是操作系统 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 将 CSS 变量注册为 Tailwind 工具类 */
+@theme {
+  /* 字体配置覆盖 */
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* 颜色映射 - 背景与边框 */
+  --color-background: var(--bg-base);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-muted: var(--bg-muted);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+
+  /* 颜色映射 - 文字 */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+
+  /* 颜色映射 - 品牌色 */
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-subtle: var(--color-accent-subtle);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
+  /* 浅色模式（Light Mode）基础变量 */
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+    --bg-base: #ffffff;
+    --bg-subtle: #f9fafb;
+    --bg-muted: #f3f4f6;
+    --border: #e5e7eb;
+    --border-subtle: #f3f4f6;
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+    --text-primary: #111827;
+    --text-secondary: #374151;
+    --text-muted: #6b7280;
+    --text-subtle: #9ca3af;
+
+    --color-accent: #ea580c;
+    --color-accent-hover: #c2410c;
+    --color-accent-subtle: #fff7ed;
+  }
+
+  /* 深色模式（Dark Mode）变量覆盖 */
+  .dark {
+    --bg-base: #0a0a0a;
+    --bg-subtle: #111111;
+    --bg-muted: #1a1a1a;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-subtle: rgba(255, 255, 255, 0.04);
+
+    --text-primary: #f5f5f5;
+    --text-secondary: #d1d5db;
+    --text-muted: #6b7280;
+    --text-subtle: #4b5563;
+
+    --color-accent: #ea580c;
+    --color-accent-hover: #c2410c;
+    --color-accent-subtle: rgba(234, 88, 12, 0.12);
+  }
+
+  /* 全局基础元素规范化 */
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-secondary); /* 默认正文颜色使用 secondary */
+    font-size: 16px;
+    line-height: 1.7; /* 保证中文长段落舒适阅读 */
+    /* 提升屏幕上的文字渲染抗锯齿质感 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* 标题体系设计规范 */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--text-primary); /* 标题更突出 */
+    font-feature-settings: "cv01"; /* 激活 Inter 更干净的单层 a 等字形 */
+  }
+
+  h1 {
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.015em; /* 负字距增加设计感 */
+  }
+
+  h2 {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.005em;
+  }
 }

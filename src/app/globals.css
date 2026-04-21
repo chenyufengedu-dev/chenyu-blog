@@ -4,6 +4,9 @@
 /* Tailwind v4 核心 */
 @import "tailwindcss";
 
+/* 引入排版插件接管 Markdown 样式 */
+@plugin "@tailwindcss/typography";
+
 /* 强制 Tailwind 的 dark: 前缀跟随 .dark 类名，而不是操作系统 */
 @custom-variant dark (&:where(.dark, .dark *));
 

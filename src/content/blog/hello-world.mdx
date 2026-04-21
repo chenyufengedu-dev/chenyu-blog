@@ -1,0 +1,37 @@
+---
+title: "我的第一篇技术博客"
+date: "2026-04-15"
+summary: "这是我使用 Next.js 15 和 MDX 搭建全新技术博客的第一篇文章。记录了项目的初始化、设计系统的思考以及基础架构的搭建过程。"
+tags: ["Next.js", "前端", "随笔"]
+---
+
+欢迎来到我的数字花园。
+
+在这里，我将记录在生物信息学、空间转录组分析以及前端全栈开发中的探索与思考。这不仅是一个展示作品集的平台，更是我理清思绪、向外输出的装置艺术。
+
+## 为什么选择 MDX？
+
+纯粹的 Markdown 只能排版静态文本，而 MDX 允许我在文章中直接注入 React 组件。这意味着未来如果我想在一篇讲解算法的文章里插入一个可以交互的 Canvas 动画，或者一个数据可视化的图表，都可以无缝实现。
+
+保持极简，保持克制。
+
+```python
+    <header className="mb-12 border-b border-border pb-8">
+        <h1 className="mb-6 text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl leading-[1.2]">
+          {metadata.title}
+        </h1>
+        <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
+          <time dateTime={metadata.date} className="font-mono">
+            {metadata.date}
+          </time>
+          <div className="h-1 w-1 rounded-full bg-border"></div>
+          <div className="flex gap-3">
+            {metadata.tags.map((tag) => (
+              <span key={tag} className="text-accent">
+                #{tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      </header>
+```

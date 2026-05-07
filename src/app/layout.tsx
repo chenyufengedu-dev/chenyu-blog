@@ -3,6 +3,9 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
+// 引入动效组件
+import PageTransition from "@/components/layout/page-transition";
+import "./globals.css";
 
 // children：这是一个特殊的参数。在 Layout 中，它代表当前正在访问的具体页面内容。
 // suppressHydrationWarning：这是一个“防报错开关”
@@ -28,7 +31,9 @@ export default function RootLayout({
           <Navbar />
           {/* flex-1 让 main 区域自动撑开剩余空间
           antialiased 应用了浏览器底层的字体平滑属性（Font Smoothing）*/}
-          <main className="flex-1">{children}</main>
+          <main className="flex-1">
+            <PageTransition>{children}</PageTransition>
+          </main>
           <Footer />
         </ThemeProvider>
       </body>

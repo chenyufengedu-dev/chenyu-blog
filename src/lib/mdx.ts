@@ -56,3 +56,27 @@ export const getAllPostsMeta = (): BlogPostMetadata[] => {
 
   return posts;
 };
+
+/**
+ * 获取相邻文章（上一篇/下一篇），用于文章底部的阅读导航
+ * 逻辑：getAllPostsMeta 已经按日期降序排列（最新的在最前）
+ * - 上一篇 (prev)：比当前文章更新的文章（即数组索引 - 1）
+ * - 下一篇 (next)：比当前文章更旧的文章（即数组索引 + 1）
+ */
+export const getAdjacentPosts = (slug: string) => {
+  const allPosts = getAllPostsMeta();
+  const currentIndex = allPosts.findIndex((post) => post.slug === slug);
+
+  // 如果找不到当前文章（容错处理），返回 null
+  if (currentIndex === -1) {
+    return { prev: null, next: null };
+  }
+
+  // 索引大于 0 说明前面还有更新的文章
+  const prev = currentIndex > 0 ? allPosts[currentIndex - 1] : null;
+  // 索引小于 length - 1 说明后面还有更旧的文章
+  const next =
+    currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null;
+
+  return { prev, next };
+};

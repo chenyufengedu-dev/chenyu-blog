@@ -1,0 +1,29 @@
+---
+title: "深入理解 React Server Components：Next.js 15 架构解析"
+date: "2026-05-16"
+summary: "探讨 RSC (React Server Components) 是如何重塑现代前端渲染心智模型的，以及在 Next.js App Router 中的实际应用与性能收益。"
+tags: ["Next.js", "React", "前端工程化"]
+---
+
+在构建这个极简博客的过程中，我深刻体验到了 React Server Components (RSC) 带来的架构范式转移。
+
+传统的 React 应用强依赖于客户端渲染（CSR），导致首屏加载时需要下载大量的 JavaScript 产物。而 RSC 允许我们在构建时或服务端提前执行组件逻辑，直接向客户端投递纯粹的 HTML 和序列化的 UI 树。
+
+## RSC 的核心优势
+
+1. **零客户端 Bundle 体积**：服务端组件的依赖不会被打包到客户端，比如我们在博客里使用的 `gray-matter` 解析 markdown，完全不会增加浏览器的负担。
+2. **直连后端数据源**：在 Server Component 中，我们可以直接读取文件系统（`fs.readFileSync`）或直连数据库，免去了编写中间 API 路由的繁琐。
+3. **渐进式增强**：配合 Client Components（使用 `"use client"` 指令），我们可以精准地将交互逻辑隔离在组件树的叶子节点。
+
+```tsx
+// 这是一个典型的 Server Component 示例
+import fs from "fs";
+
+export default async function BlogPost({ slug }) {
+  // 直接在组件内读取服务器文件，安全且高效
+  const content = fs.readFileSync(`posts/${slug}.md`, "utf-8");
+  return <article>{content}</article>;
+}
+```
+
+RSC 不是对客户端渲染的否定，而是对前后端边界的一次精妙重构。

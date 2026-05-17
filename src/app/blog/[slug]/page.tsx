@@ -1,11 +1,11 @@
-// src/app/blog/[slug]/page.tsx
-import { getPostBySlug, getAllPostsMeta } from "@/lib/mdx";
+import { getPostBySlug, getAllPostsMeta, getAdjacentPosts } from "@/lib/mdx";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import rehypePrettyCode from "rehype-pretty-code";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ComponentPropsWithoutRef } from "react";
+import MdxPre from "@/components/blog/mdx-pre";
 
 // 1. 静态生成 (SSG)：告诉 Next.js 编译时需要预先生成哪些文章页面
 export async function generateStaticParams() {
@@ -18,6 +18,7 @@ const mdxComponents = {
   a: (props: ComponentPropsWithoutRef<"a">) => (
     // 带有主色调（text-accent）、底部有 30%
     // 透明度的下划线（decoration-accent/30），且鼠标悬停时下划线变深（hover:decoration-accent）
+    // underline-offset-4 text-underline-offset: 4px; 强制将下划线往下推移 4 个像素。
     <a
       {...props}
       target="_blank"
@@ -30,6 +31,7 @@ const mdxComponents = {
   code: (props: ComponentPropsWithoutRef<"code">) => (
     <code {...props} className="font-mono text-[14px]" />
   ),
+  pre: MdxPre,
 };
 
 // Next.js 15 中，params 是一个 Promise
@@ -48,8 +50,14 @@ export default async function BlogPostPage({
     // 如果 URL 输入了不存在的 slug，直接触发 404 页面
     notFound();
   }
-
   const { metadata, content } = post;
+
+  // 获取上一篇/下一篇数据
+  const { prev, next } = getAdjacentPosts(slug);
+  // 4. 计算阅读时间 (中文 300字/分，英文 200词/分)
+  const chineseChars = (content.match(/[\u4e00-\u9fa5]/g) || []).length;
+  const englishWords = (content.match(/\b[a-zA-Z]+\b/g) || []).length;
+  const readingTime = Math.ceil(chineseChars / 300 + englishWords / 200);
 
   // rehype-pretty-code 语法高亮配置
   const rehypeOptions = {
@@ -60,16 +68,22 @@ export default async function BlogPostPage({
   return (
     <article className="mx-auto max-w-3xl px-6 py-20 md:px-8 md:py-24">
       {/* 顶部导航与返回 */}
-      <Link
-        href="/blog"
-        className="group mb-10 inline-flex items-center gap-2 text-sm text-text-muted transition-colors hover:text-text-primary"
-      >
-        <ArrowLeft
-          size={16}
-          className="transition-transform group-hover:-translate-x-1"
-        />
-        返回博客
-      </Link>
+      <div className="mb-6">
+        {/* inline-flex: 结合了 inline（内联元素，像普通文字一样，有多宽就占多宽，可以和别的字排在同一行）和 flex（弹性布局）的双重优点 flex，浏览器会把它当成一个“块级盒子（Block）”。  而flex块级盒子有一个非常霸道的特性——它会强行霸占一整行的宽度（100% 宽度）
+        items-center 会强行让里面的图标和文字在垂直中轴线上绝对对齐
+        group 赋予父容器整个感应区域 */}
+        <Link
+          href="/blog"
+          className="group inline-flex items-center gap-2 text-sm text-text-muted transition-colors hover:text-text-primary"
+        >
+          {/* leading-none 剥离多余空间 浏览器默认会给每一行字上下加上额外的“留白”（行高） leading-none 直接把这些留白扒光，让这个 <span> 的真实高度等于箭头本身的高度 */}
+          <ArrowLeft
+            size={16}
+            className="relative -top-[1.5px] leading-none transition-transform group-hover:-translate-x-1"
+          />
+          返回博客
+        </Link>
+      </div>
 
       {/* 文章 Header */}
       <header className="mb-12 border-b border-border pb-8">
@@ -80,6 +94,9 @@ export default async function BlogPostPage({
           <time dateTime={metadata.date} className="font-mono">
             {metadata.date}
           </time>
+          <div className="h-1 w-1 rounded-full bg-border"></div>
+          {/* 阅读时间 */}
+          <span>约 {readingTime} 分钟读完</span>
           <div className="h-1 w-1 rounded-full bg-border"></div>
           <div className="flex gap-3">
             {metadata.tags.map((tag) => (
@@ -129,6 +146,42 @@ export default async function BlogPostPage({
           }}
         />
       </div>
+
+      {/* 文章底部导航 (上一篇 / 下一篇) */}
+      <nav className="mt-16 flex flex-col gap-4 border-t border-border py-8 sm:flex-row sm:justify-between">
+        {/* flex-1=flex: 1 1 0%; 给左右两边的盒子都加上 flex-1，意思就是告诉它们：“你们俩把剩下的空间给我五五开平分了，谁也别抢谁的。” 这保证了左右两个按钮各占屏幕一半的面积*/}
+        <div className="flex-1">
+          {prev && (
+            <Link
+              href={`/blog/${prev.slug}`}
+              className="group flex flex-col items-start gap-1 text-sm text-text-muted transition-colors hover:text-accent"
+            >
+              <span className="text-[11px] uppercase tracking-widest text-text-subtle ">
+                上一篇
+              </span>
+              <span className="font-medium text-text-primary group-hover:text-accent">
+                {prev.title}
+              </span>
+            </Link>
+          )}
+        </div>
+        {/* text-right（右侧对齐 */}
+        <div className="flex-1 text-right">
+          {next && (
+            <Link
+              href={`/blog/${next.slug}`}
+              className="group flex flex-col items-end gap-1 text-sm text-text-muted transition-colors hover:text-accent"
+            >
+              <span className="text-[11px] uppercase tracking-widest text-text-subtle ">
+                下一篇
+              </span>
+              <span className="font-medium text-text-primary group-hover:text-accent">
+                {next.title}
+              </span>
+            </Link>
+          )}
+        </div>
+      </nav>
     </article>
   );
 }

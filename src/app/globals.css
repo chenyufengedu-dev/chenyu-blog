@@ -114,4 +114,26 @@
     line-height: 1.3;
     letter-spacing: -0.005em;
   }
+
+  /* 滚动条整体宽度 */
+  ::-webkit-scrollbar {
+    width: 7px;
+    height: 7px; /* 兼顾可能存在的横向代码块滚动 */
+  }
+
+  /* 滚动条轨道：保持透明，不挤占页面空间 */
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* 滚动条滑块：增加圆角 */
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  /* 滚动条滑块悬停态：颜色轻微加深 */
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-subtle);
+  }
 }

@@ -205,15 +205,15 @@ export default function AboutPage() {
           <h3 className="mb-4 text-2xl font-semibold tracking-tight text-text-primary">
             取得联系
           </h3>
-          <p className="text-base leading-[1.7] text-text-secondary max-w-2xl">
-            无论是关于空间转录组的学术探讨、Next.js
-            的技术交流，还是全职/实习的工作机会，我都随时欢迎你的来信。
+          <p className="text-base leading-[1.7] text-text-secondary max-w-4xl">
+            无论是关于空间转录组的学术探讨、Next.js的技术交流，还是全职/实习的工作机会，我都随时欢迎你的来信。
           </p>
         </div>
         {/* 左右非对称网格结构 */}
         <div className="grid grid-cols-1 gap-12 md:grid-cols-5 md:gap-16">
-          {/* 左侧：社交链路 */}
-          <div className="col-span-1 md:col-span-2">
+          {/* 左侧：社交链路 
+          space-y-3: 为子元素之间自动添加 1rem (12px) 的垂直间距*/}
+          <div className="col-span-1 md:col-span-2 space-y-3">
             <a
               href="mailto:your.email@example.com"
               className="group flex items-center gap-3 text-sm text-text-secondary transition-colors hover:text-accent"

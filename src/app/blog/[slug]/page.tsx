@@ -111,29 +111,99 @@ export default async function BlogPostPage({
       {/* MDX 正文渲染区 
         使用 prose 类名激活 Typography 插件，并结合自定义设计系统 Token 进行深度覆盖 
       */}
+      {/* Typography 基础排版 */}
       <div
         className="
-        prose prose-neutral dark:prose-invert max-w-none 
-        prose-p:text-text-secondary prose-p:leading-[1.7] 
-        prose-headings:text-text-primary prose-headings:font-semibold prose-headings:tracking-tight
-        prose-strong:text-text-primary prose-strong:font-semibold
+        prose prose-neutral dark:prose-invert max-w-none
+
+        /* 段落文字颜色 + 行高 */
+        prose-p:text-text-secondary
+        prose-p:leading-[1.7]
+
+        /* 标题颜色 + 字重 + 紧凑字距 */
+        prose-headings:text-text-primary
+        prose-headings:font-semibold
+        prose-headings:tracking-tight
+
+        /* 加粗文字 */
+        prose-strong:text-text-primary
+        prose-strong:font-semibold
+
+        /* 分割线颜色 */
         prose-hr:border-border
-        
-        /* 1. 内联代码 (Inline Code) 靶向治疗：只选中非代码块里的短代码 */
-        [&_:not(pre)>code]:text-accent [&_:not(pre)>code]:bg-accent-subtle [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-md [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[14px]
-        prose-code:before:content-none prose-code:after:content-none
-        
-        /* 2. 代码块排版溢出与背景截断的终极修复 */
-        /* 约束最外层 figure，画出暗色背景与边框，强制防溢出 */
-        [&_[data-rehype-pretty-code-figure]]:max-w-full [&_[data-rehype-pretty-code-figure]]:overflow-hidden [&_[data-rehype-pretty-code-figure]]:rounded-lg [&_[data-rehype-pretty-code-figure]]:border [&_[data-rehype-pretty-code-figure]]:border-border/50 [&_[data-rehype-pretty-code-figure]]:!bg-[#0d1117]
-        
-        /* 让 pre 负责横向滚动，自身背景透明，透出 figure 的高级暗色 */
-        [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:p-4 [&_pre]:!bg-transparent
-        [&_pre::-webkit-scrollbar]:hidden [&_pre]:[-ms-overflow-style:none] [&_pre]:[scrollbar-width:none]
-        
-        /* 强制 code 使用 grid 布局占满整个滚动区域，彻底消灭浅色截断块 */
-        [&_pre_code]:grid [&_pre_code]:min-w-full [&_pre_code]:!bg-transparent
-        [&_pre_code_span]:text-[14px] [&_pre_code_span]:leading-[1.8]
+
+
+        /* ===== 代码块 figure（最外层黑框）===== */
+
+        /* 整个代码块上下间距 */
+        [&_[data-rehype-pretty-code-figure]]:my-5
+
+        /* 超出内容裁切（配合圆角） */
+        [&_[data-rehype-pretty-code-figure]]:overflow-hidden
+
+        /* 圆角 */
+        [&_[data-rehype-pretty-code-figure]]:rounded-xl
+
+        /* 边框 */
+        [&_[data-rehype-pretty-code-figure]]:border
+        [&_[data-rehype-pretty-code-figure]]:border-border/50
+
+        /* 深色背景 */
+        [&_[data-rehype-pretty-code-figure]]:bg-[#0d1117]
+
+
+        /* ===== pre（代码滚动区域）===== */
+
+        /* 干掉 typography 默认 margin */
+        prose-pre:my-0
+
+        /* 最大宽度不超出父容器 */
+        [&_pre]:max-w-full
+
+        /* 横向滚动 */
+        [&_pre]:overflow-x-auto
+
+        /* 左右 padding */
+        [&_pre]:px-5
+
+        /* 上下 padding */
+        [&_pre]:py-3
+
+        /* 背景透明（透出 figure 背景） */
+        [&_pre]:!bg-transparent
+
+
+        /* ===== 隐藏滚动条 ===== */
+
+        /* Chrome/Safari */
+        [&_pre::-webkit-scrollbar]:hidden
+
+        /* IE/Edge */
+        [&_pre]:[-ms-overflow-style:none]
+
+        /* Firefox */
+        [&_pre]:[scrollbar-width:none]
+
+
+        /* ===== code ===== */
+
+        /* code 使用 grid 布局 */
+        [&_pre_code]:grid
+
+        /* 最小宽度撑满 */
+        [&_pre_code]:min-w-full
+
+        /* code 背景透明 */
+        [&_pre_code]:bg-transparent
+
+
+        /* ===== 每一行代码 ===== */
+
+        /* 字体大小 */
+        [&_pre_code_span]:text-[14px]
+
+        /* 行高 */
+        [&_pre_code_span]:leading-7
       "
       >
         <MDXRemote

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ComponentPropsWithoutRef } from "react";
 import MdxPre from "@/components/blog/mdx-pre";
+import ReadingProgress from "@/components/blog/reading-progress";
 
 // 1. 静态生成 (SSG)：告诉 Next.js 编译时需要预先生成哪些文章页面
 export async function generateStaticParams() {
@@ -66,54 +67,57 @@ export default async function BlogPostPage({
   };
 
   return (
-    <article className="mx-auto max-w-3xl px-6 py-20 md:px-8 md:py-24">
-      {/* 顶部导航与返回 */}
-      <div className="mb-6">
-        {/* inline-flex: 结合了 inline（内联元素，像普通文字一样，有多宽就占多宽，可以和别的字排在同一行）和 flex（弹性布局）的双重优点 flex，浏览器会把它当成一个“块级盒子（Block）”。  而flex块级盒子有一个非常霸道的特性——它会强行霸占一整行的宽度（100% 宽度）
+    <>
+      {/* 插入阅读进度条，因为是 fixed 定位，放在这里会自动吸附在页面最顶部 */}
+      <ReadingProgress />
+      <article className="mx-auto max-w-3xl px-6 py-20 md:px-8 md:py-24">
+        {/* 顶部导航与返回 */}
+        <div className="mb-6">
+          {/* inline-flex: 结合了 inline（内联元素，像普通文字一样，有多宽就占多宽，可以和别的字排在同一行）和 flex（弹性布局）的双重优点 flex，浏览器会把它当成一个“块级盒子（Block）”。  而flex块级盒子有一个非常霸道的特性——它会强行霸占一整行的宽度（100% 宽度）
         items-center 会强行让里面的图标和文字在垂直中轴线上绝对对齐
         group 赋予父容器整个感应区域 */}
-        <Link
-          href="/blog"
-          className="group inline-flex items-center gap-2 text-sm text-text-muted transition-colors hover:text-text-primary"
-        >
-          {/* leading-none 剥离多余空间 浏览器默认会给每一行字上下加上额外的“留白”（行高） leading-none 直接把这些留白扒光，让这个 <span> 的真实高度等于箭头本身的高度 */}
-          <ArrowLeft
-            size={16}
-            className="relative -top-[1.5px] leading-none transition-transform group-hover:-translate-x-1"
-          />
-          返回博客
-        </Link>
-      </div>
-
-      {/* 文章 Header */}
-      <header className="mb-12 border-b border-border pb-8">
-        <h1 className="mb-6 text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl leading-[1.2]">
-          {metadata.title}
-        </h1>
-        <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
-          <time dateTime={metadata.date} className="font-mono">
-            {metadata.date}
-          </time>
-          <div className="h-1 w-1 rounded-full bg-border"></div>
-          {/* 阅读时间 */}
-          <span>约 {readingTime} 分钟读完</span>
-          <div className="h-1 w-1 rounded-full bg-border"></div>
-          <div className="flex gap-3">
-            {metadata.tags.map((tag) => (
-              <span key={tag} className="text-accent">
-                #{tag}
-              </span>
-            ))}
-          </div>
+          <Link
+            href="/blog"
+            className="group inline-flex items-center gap-2 text-sm text-text-muted transition-colors hover:text-text-primary"
+          >
+            {/* leading-none 剥离多余空间 浏览器默认会给每一行字上下加上额外的“留白”（行高） leading-none 直接把这些留白扒光，让这个 <span> 的真实高度等于箭头本身的高度 */}
+            <ArrowLeft
+              size={16}
+              className="relative -top-[1.5px] leading-none transition-transform group-hover:-translate-x-1"
+            />
+            返回博客
+          </Link>
         </div>
-      </header>
 
-      {/* MDX 正文渲染区 
+        {/* 文章 Header */}
+        <header className="mb-12 border-b border-border pb-8">
+          <h1 className="mb-6 text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl leading-[1.2]">
+            {metadata.title}
+          </h1>
+          <div className="flex flex-wrap items-center gap-4 text-sm text-text-muted">
+            <time dateTime={metadata.date} className="font-mono">
+              {metadata.date}
+            </time>
+            <div className="h-1 w-1 rounded-full bg-border"></div>
+            {/* 阅读时间 */}
+            <span>约 {readingTime} 分钟读完</span>
+            <div className="h-1 w-1 rounded-full bg-border"></div>
+            <div className="flex gap-3">
+              {metadata.tags.map((tag) => (
+                <span key={tag} className="text-accent">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        </header>
+
+        {/* MDX 正文渲染区 
         使用 prose 类名激活 Typography 插件，并结合自定义设计系统 Token 进行深度覆盖 
       */}
-      {/* Typography 基础排版 */}
-      <div
-        className="
+        {/* Typography 基础排版 */}
+        <div
+          className="
         prose prose-neutral dark:prose-invert max-w-none
 
         /* 段落文字颜色 + 行高 */
@@ -205,53 +209,54 @@ export default async function BlogPostPage({
         /* 行高 */
         [&_pre_code_span]:leading-7
       "
-      >
-        <MDXRemote
-          source={content}
-          components={mdxComponents}
-          options={{
-            mdxOptions: {
-              rehypePlugins: [[rehypePrettyCode, rehypeOptions]],
-            },
-          }}
-        />
-      </div>
+        >
+          <MDXRemote
+            source={content}
+            components={mdxComponents}
+            options={{
+              mdxOptions: {
+                rehypePlugins: [[rehypePrettyCode, rehypeOptions]],
+              },
+            }}
+          />
+        </div>
 
-      {/* 文章底部导航 (上一篇 / 下一篇) */}
-      <nav className="mt-16 flex flex-col gap-4 border-t border-border py-8 sm:flex-row sm:justify-between">
-        {/* flex-1=flex: 1 1 0%; 给左右两边的盒子都加上 flex-1，意思就是告诉它们：“你们俩把剩下的空间给我五五开平分了，谁也别抢谁的。” 这保证了左右两个按钮各占屏幕一半的面积*/}
-        <div className="flex-1">
-          {prev && (
-            <Link
-              href={`/blog/${prev.slug}`}
-              className="group flex flex-col items-start gap-1 text-sm text-text-muted transition-colors hover:text-accent"
-            >
-              <span className="text-[11px] uppercase tracking-widest text-text-subtle ">
-                上一篇
-              </span>
-              <span className="font-medium text-text-primary group-hover:text-accent">
-                {prev.title}
-              </span>
-            </Link>
-          )}
-        </div>
-        {/* text-right（右侧对齐 */}
-        <div className="flex-1 text-right">
-          {next && (
-            <Link
-              href={`/blog/${next.slug}`}
-              className="group flex flex-col items-end gap-1 text-sm text-text-muted transition-colors hover:text-accent"
-            >
-              <span className="text-[11px] uppercase tracking-widest text-text-subtle ">
-                下一篇
-              </span>
-              <span className="font-medium text-text-primary group-hover:text-accent">
-                {next.title}
-              </span>
-            </Link>
-          )}
-        </div>
-      </nav>
-    </article>
+        {/* 文章底部导航 (上一篇 / 下一篇) */}
+        <nav className="mt-16 flex flex-col gap-4 border-t border-border py-8 sm:flex-row sm:justify-between">
+          {/* flex-1=flex: 1 1 0%; 给左右两边的盒子都加上 flex-1，意思就是告诉它们：“你们俩把剩下的空间给我五五开平分了，谁也别抢谁的。” 这保证了左右两个按钮各占屏幕一半的面积*/}
+          <div className="flex-1">
+            {prev && (
+              <Link
+                href={`/blog/${prev.slug}`}
+                className="group flex flex-col items-start gap-1 text-sm text-text-muted transition-colors hover:text-accent"
+              >
+                <span className="text-[11px] uppercase tracking-widest text-text-subtle ">
+                  上一篇
+                </span>
+                <span className="font-medium text-text-primary group-hover:text-accent">
+                  {prev.title}
+                </span>
+              </Link>
+            )}
+          </div>
+          {/* text-right（右侧对齐 */}
+          <div className="flex-1 text-right">
+            {next && (
+              <Link
+                href={`/blog/${next.slug}`}
+                className="group flex flex-col items-end gap-1 text-sm text-text-muted transition-colors hover:text-accent"
+              >
+                <span className="text-[11px] uppercase tracking-widest text-text-subtle ">
+                  下一篇
+                </span>
+                <span className="font-medium text-text-primary group-hover:text-accent">
+                  {next.title}
+                </span>
+              </Link>
+            )}
+          </div>
+        </nav>
+      </article>
+    </>
   );
 }

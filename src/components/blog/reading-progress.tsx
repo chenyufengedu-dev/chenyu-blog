@@ -49,7 +49,7 @@ export default function ReadingProgress() {
       >
         {/* 数字进度指示器 */}
         <div
-          className={`absolute right-0 top-[2px] transition-opacity duration-300 ${
+          className={`absolute right-0 top-[0.5px] transition-opacity duration-300 ${
             showNumber ? "opacity-100" : "opacity-0"
           }`}
         >

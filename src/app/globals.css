@@ -137,3 +137,44 @@
     background: var(--text-subtle);
   }
 }
+
+/* 光晕呼吸动画
+ * 策略：高亮态占主导，短暂沉入谷底，模拟"屏住呼吸"的律动节奏
+ * 42%~58% 形成谷底平台，避免瞬间反弹，让暗部有停留感 */
+/* 光晕呼吸 */
+@keyframes glow-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes glow-breathe-core {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* Timeline 圆点 hover 呼吸动画 */
+@keyframes dot-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0px rgba(234, 88, 12, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(234, 88, 12, 0);
+  }
+}
+
+/* hover 时触发：变橙色 + 呼吸光晕 */
+.group:hover .dot-timeline {
+  background-color: #ea580c;
+  animation: dot-glow 1.5s ease-in-out infinite;
+}

@@ -52,26 +52,54 @@ export default function ProjectList({ projects }: { projects: Project[] }) {
 
       {/* 项目卡片网格 */}
       <div className="grid gap-6 sm:grid-cols-2">
-        {filteredProjects.map((project) => (
+        {filteredProjects.map((project, index) => (
           <article
             key={project.id}
-            className="group flex flex-col justify-between rounded-lg border border-border bg-bg-subtle p-6 transition-all duration-300 hover:border-accent/40 hover:bg-background hover:shadow-sm"
+            className="group flex flex-col justify-between rounded-lg border border-border/60 bg-bg-subtle px-4 py-2 transition-all duration-300 hover:border-accent/20 hover:bg-background hover:shadow-sm"
           >
             <div>
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold tracking-tight text-text-primary group-hover:text-accent transition-colors">
+              {/* 2：强制下达死命令——“这个字符串最终的长度必须绝对等于 2”。
+              "0"：如果长度不够 2 怎么办？“用字符 "0" 从左边（Start）填补空白”。 */}
+              <span className="mt-1 mb-1 block font-mono text-[11px] tracking-widest text-text-subtle">
+                {String(index + 1).padStart(2, "0")} /
+                {String(filteredProjects.length).padStart(2, "0")}
+              </span>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-[17px] font-medium tracking-tight text-text-primary group-hover:text-accent transition-colors">
                   {project.title}
                 </h2>
-                <div className="flex gap-3 text-text-muted">
+                <div className="flex gap-[2px] text-text-muted">
                   {project.githubUrl && (
                     <Link
                       href={project.githubUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:text-text-primary transition-colors"
+                      className="group/githubBtn relative flex h-8 w-8 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text-primary"
                       aria-label={`${project.title} 的 GitHub 仓库`}
                     >
-                      <FaGithub size={20} />
+                      {/* 增加 opacity-50 降低视觉干扰 */}
+                      <svg
+                        className="absolute inset-0 h-full w-full opacity-50"
+                        viewBox="0 0 32 32"
+                      >
+                        <path
+                          d="M 16 31 A 15 15 0 0 1 16 1"
+                          fill="none"
+                          stroke="var(--color-accent)"
+                          strokeWidth="1" // 线宽由 1.2 降为 1
+                          strokeLinecap="round"
+                          className="transition-all duration-500 ease-out [stroke-dasharray:48] [stroke-dashoffset:48] group-hover/githubBtn:[stroke-dashoffset:0]"
+                        />
+                        <path
+                          d="M 16 31 A 15 15 0 0 0 16 1"
+                          fill="none"
+                          stroke="var(--color-accent)"
+                          strokeWidth="1" // 线宽由 1.2 降为 1
+                          strokeLinecap="round"
+                          className="transition-all duration-500 ease-out [stroke-dasharray:48] [stroke-dashoffset:48] group-hover/githubBtn:[stroke-dashoffset:0]"
+                        />
+                      </svg>
+                      <FaGithub size={20} className="relative z-10" />
                     </Link>
                   )}
                   {project.liveUrl && (
@@ -79,29 +107,49 @@ export default function ProjectList({ projects }: { projects: Project[] }) {
                       href={project.liveUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:text-text-primary transition-colors"
+                      className="group/liveBtn relative flex h-8 w-8 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text-primary"
                       aria-label={`${project.title} 的在线演示`}
                     >
-                      <ExternalLink size={20} />
+                      <svg
+                        className="absolute inset-0 h-full w-full opacity-50"
+                        viewBox="0 0 32 32"
+                      >
+                        <path
+                          d="M 16 29 L 11 29 A 8 8 0 0 1 3 21 L 3 11 A 8 8 0 0 1 11 3 L 18 3"
+                          fill="none"
+                          stroke="var(--color-accent)"
+                          strokeWidth="1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="transition-all duration-500 ease-out [stroke-dasharray:48] [stroke-dashoffset:48] group-hover/liveBtn:[stroke-dashoffset:0]"
+                        />
+                        <path
+                          d="M 16 29 L 21 29 A 8 8 0 0 0 29 21 L 29 14"
+                          fill="none"
+                          stroke="var(--color-accent)"
+                          strokeWidth="1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="transition-all duration-500 ease-out [stroke-dasharray:25] [stroke-dashoffset:25] group-hover/liveBtn:[stroke-dashoffset:0]"
+                        />
+                      </svg>
+                      {/* 第一性原理修复：进行“视觉对齐”补偿，向右上角微调 1px 平衡负空间 */}
+                      <ExternalLink
+                        size={20}
+                        className="relative z-10 -translate-y-[1px] translate-x-[1px]"
+                      />
                     </Link>
                   )}
                 </div>
               </div>
-              <p className="mb-6 text-sm leading-[1.7] text-text-secondary">
+              <p className="mb-6 text-[14px] leading-[1.7] text-text-secondary">
                 {project.description}
               </p>
             </div>
 
-            {/* 底部技术标签（纯文本形态，保持克制） */}
-            <div className="flex flex-wrap gap-x-4 gap-y-2">
-              {project.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[13px] font-mono text-text-muted"
-                >
-                  {tag}
-                </span>
-              ))}
+            {/* 技术标签简化，使用连字符与分隔点合并为纯文本格式 */}
+            <div className="font-mono text-[12px] text-text-subtle">
+              —— {project.tags.join(" · ")}
             </div>
           </article>
         ))}

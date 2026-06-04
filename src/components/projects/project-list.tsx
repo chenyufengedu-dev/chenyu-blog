@@ -23,13 +23,13 @@ export default function ProjectList({ projects }: { projects: Project[] }) {
     <div>
       {/* 标签筛选区 */}
       {allTags.length > 0 && (
-        <div className="mb-12 flex flex-wrap gap-2">
+        <div className="mb-12 flex flex-wrap gap-8 border-b border-border/50 pb-[1px]">
           <button
             onClick={() => setSelectedTag(null)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`relative pb-3 text-sm transition-colors ${
               selectedTag === null
-                ? "bg-accent text-white"
-                : "bg-bg-subtle text-text-muted hover:text-text-primary hover:bg-bg-muted"
+                ? "font-medium text-text-primary after:absolute after:-bottom-[1px] after:left-0 after:h-[2px] after:w-full after:bg-accent"
+                : "font-normal text-text-muted hover:text-text-primary"
             }`}
           >
             全部
@@ -38,10 +38,10 @@ export default function ProjectList({ projects }: { projects: Project[] }) {
             <button
               key={tag}
               onClick={() => setSelectedTag(tag)}
-              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+              className={`relative pb-3 text-sm transition-colors ${
                 selectedTag === tag
-                  ? "bg-accent text-white"
-                  : "bg-bg-subtle text-text-muted hover:text-text-primary hover:bg-bg-muted"
+                  ? "font-medium text-text-primary after:absolute after:-bottom-[1px] after:left-0 after:h-[2px] after:w-full after:bg-accent"
+                  : "font-normal text-text-muted hover:text-text-primary"
               }`}
             >
               {tag}
@@ -55,8 +55,12 @@ export default function ProjectList({ projects }: { projects: Project[] }) {
         {filteredProjects.map((project, index) => (
           <article
             key={project.id}
-            className="group flex flex-col justify-between rounded-lg border border-border/60 bg-bg-subtle px-4 py-2 transition-all duration-300 hover:border-accent/20 hover:bg-background hover:shadow-sm"
+            // 1. 确保容器有 relative 和 overflow-hidden，这样底部生长的线条才不会溢出圆角
+            // 2. 依然保留边框颜色的轻微加深（hover:border-accent/30）作为基底
+            className="group relative flex flex-col justify-between overflow-hidden rounded-lg border border-border/60 bg-bg-subtle px-6 pb-6 pt-5 transition-all duration-300 hover:border-accent/30 hover:bg-background hover:shadow-sm"
           >
+            {/* 底部能量线展开动效。从左侧 50% 的位置向两边展开，高度 2px */}
+            <div className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 bg-accent transition-all duration-300 ease-out group-hover:w-full" />
             <div>
               {/* 2：强制下达死命令——“这个字符串最终的长度必须绝对等于 2”。
               "0"：如果长度不够 2 怎么办？“用字符 "0" 从左边（Start）填补空白”。 */}

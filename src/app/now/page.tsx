@@ -1,6 +1,6 @@
 // src/app/now/page.tsx
 import type { Metadata } from "next";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Now | Chenyu",
@@ -153,39 +153,55 @@ export default function NowPage() {
       </article>
 
       {/* ── CHANGELOG ── */}
-      <section>
-        <div className="mb-7 flex items-center gap-3">
+      <details className="group border-t border-border pt-7">
+        <summary
+          className="group/summary flex cursor-pointer list-none items-center gap-3
+             py-1 [&::-webkit-details-marker]:hidden"
+        >
           <span className="whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
             Changelog
           </span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
 
-        <div className="relative ml-3 space-y-1 border-l border-border">
+          <div className="h-px flex-1 bg-border transition-colors group-hover/summary:bg-text-subtle/40" />
+
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-text-subtle transition-colors group-hover/summary:text-text-muted group-open:text-text-muted">
+            History
+            <ChevronDown
+              size={13}
+              strokeWidth={1.5}
+              className="transition-transform duration-200 group-open:rotate-180"
+            />
+          </span>
+        </summary>
+
+        <div className="relative ml-3 mt-7 space-y-1 border-l border-border">
           {CHANGELOG.map((entry, i) => (
             <div
               key={i}
-              className="group relative -ml-[1px] rounded-r-xl py-3.5 pl-7
-                         transition-colors duration-150 hover:bg-bg-subtle/60"
+              className="group/item relative -ml-[1px] rounded-r-xl py-3.5 pl-7
+                   transition-colors duration-150 hover:bg-bg-subtle/60"
             >
               <div
                 className="absolute -left-[5px] top-[19px] h-2.5 w-2.5 rounded-full
-                              bg-border ring-4 ring-background transition-all duration-300
-                              group-hover:scale-110 group-hover:bg-[#ea580c]"
+                     bg-border ring-4 ring-background transition-all duration-300
+                     group-hover/item:scale-110 group-hover/item:bg-[#ea580c]"
               />
+
               <time className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-text-muted">
                 {entry.date}
               </time>
+
               <p className="text-[14px] leading-[1.75] text-text-secondary">
                 {entry.text}
               </p>
             </div>
           ))}
+
           <div className="pb-1 pl-7 pt-2">
             <p className="text-[13px] italic text-text-subtle">……还在续写。</p>
           </div>
         </div>
-      </section>
+      </details>
     </div>
   );
 }

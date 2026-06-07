@@ -1,6 +1,13 @@
 // src/app/about/page.tsx
 import type { Metadata } from "next";
-import { Clock, Mail, MapPin, Microscope, Terminal } from "lucide-react";
+import {
+  Clock,
+  Mail,
+  MapPin,
+  Microscope,
+  Terminal,
+  ArrowUpRight,
+} from "lucide-react";
 import { FaGithub, FaTwitter } from "react-icons/fa";
 import ContactForm from "@/components/contact/contact-form";
 
@@ -48,20 +55,7 @@ const TIMELINE_DATA = [
       "完成 The American Journal of Clinical Nutrition 期刊稿件 (AJCN-D-24-02427) 的同行评审通讯与决策流转。",
   },
 ];
-const NOW_ITEMS = [
-  {
-    title: "研究",
-    text: "空间转录组数据分析与高通量生物数据工作流。",
-  },
-  {
-    title: "工程",
-    text: "Next.js 应用、容器化部署与可复用的前端设计系统。",
-  },
-  {
-    title: "写作",
-    text: "记录生信研究、Web 工程和 AI 辅助学习的阶段性思考。",
-  },
-];
+
 const CONTACTS = [
   {
     href: "mailto:your.email@example.com",
@@ -389,33 +383,42 @@ export default function AboutPage() {
 
       {/* Now 近况 */}
       <section className="mb-12">
-        <div className="mb-3 flex items-center gap-4">
-          <span className="whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.14em] text-text-subtle">
-            Now
-          </span>
-          <div className="h-[1px] flex-1 bg-border" />
-        </div>
+        <a
+          href="/now"
+          className="group flex items-center justify-between gap-4 rounded-xl border border-border
+               bg-bg-subtle/40 px-5 py-4 transition-colors duration-200
+               hover:bg-bg-subtle hover:border-[#ea580c]/30"
+        >
+          <div className="flex items-center gap-3.5">
+            {/* 橙色呼吸灯，呼应「此刻正在进行」 */}
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ea580c] opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[#ea580c]" />
+            </span>
 
-        <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-3">
-          {NOW_ITEMS.map((item, index) => (
-            <div
-              key={item.title}
-              className="space-y-1.5 border-l-2 border-[#ea580c]/25 pl-3 transition-colors duration-200 hover:border-[#ea580c]/70"
-            >
-              <div className="flex items-baseline gap-2">
-                <span className="font-mono text-[12px] text-[#ea580c]/60">
-                  0{index + 1}
-                </span>
-                <h4 className="text-[14px] font-medium text-text-primary">
-                  {item.title}
-                </h4>
-              </div>
-              <p className="text-[13.5px] leading-[1.75] text-text-secondary">
-                {item.text}
+            <div>
+              <p className="text-[14px] font-medium text-text-primary">
+                此刻我在忙什么？
+              </p>
+
+              <p className="mt-0.5 text-[13px] text-text-secondary">
+                最近的研究、项目与阅读动态，持续更新中
               </p>
             </div>
-          ))}
-        </div>
+          </div>
+
+          <span
+            className="flex shrink-0 items-center gap-1 font-mono text-[12px] text-text-muted
+
+                     transition-colors group-hover:text-[#ea580c]"
+          >
+            Now
+            <ArrowUpRight
+              size={13}
+              className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+            />
+          </span>
+        </a>
       </section>
 
       {/* Timeline 时间轴 */}

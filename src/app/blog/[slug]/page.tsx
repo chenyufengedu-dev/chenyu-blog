@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { ComponentPropsWithoutRef } from "react";
 import MdxPre from "@/components/blog/mdx-pre";
 import ReadingProgress from "@/components/blog/reading-progress";
+import MdxImage from "@/components/blog/mdx-image";
 
 // 1. 静态生成 (SSG)：告诉 Next.js 编译时需要预先生成哪些文章页面
 export async function generateStaticParams() {
@@ -27,11 +28,21 @@ const mdxComponents = {
       className="font-medium text-accent underline decoration-accent/30 underline-offset-4 transition-colors hover:decoration-accent"
     />
   ),
-  //ComponentPropsWithoutRef，精准告诉 TypeScript：“这个 props 里装的，完全是一个原生 <a> 标签或 <code> 标签该有的所有合法属性”。
+
+  // ComponentPropsWithoutRef，精准告诉 TypeScript：
+  // “这个 props 里装的，完全是一个原生 <a>、<code> 或 <img> 标签该有的所有合法属性”。
   // 约束代码块字体
   code: (props: ComponentPropsWithoutRef<"code">) => (
     <code {...props} className="font-mono text-[14px]" />
   ),
+
+  // MDX 图片样式优化：
+  // Markdown 里的 ![]() 最终会被渲染成 <img>，这里拦截它，给图片加统一外框。
+  // 注意：Next.js Image 组件需要提前知道 width/height，
+  // 但 MDX 文章里的图片通常只是普通 Markdown 路径，所以这里用原生 img 更简单稳定。
+
+  img: MdxImage,
+
   pre: MdxPre,
 };
 

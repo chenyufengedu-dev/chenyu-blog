@@ -178,3 +178,17 @@
   background-color: #ea580c;
   animation: dot-glow 1.5s ease-in-out infinite;
 }
+
+/* 404 页面感叹号摆动动画：*/
+@keyframes wiggle {
+  0%,
+  100% {
+    /* 初始/结束状态：轻微上浮 + 轻微右倾 */
+    transform: translateY(-0.125rem) rotate(2deg);
+  }
+
+  50% {
+    /* 中间状态：再上浮一点 + 右倾角度变大，形成“摆一下”的感觉 */
+    transform: translateY(-0.25rem) rotate(19deg);
+  }
+}

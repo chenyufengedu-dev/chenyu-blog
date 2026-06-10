@@ -5,7 +5,6 @@ import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 // 引入动效组件
 import PageTransition from "@/components/layout/page-transition";
-import "./globals.css";
 
 // children：这是一个特殊的参数。在 Layout 中，它代表当前正在访问的具体页面内容。
 // suppressHydrationWarning：这是一个“防报错开关”

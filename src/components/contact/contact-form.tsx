@@ -23,6 +23,7 @@ type ContactFormValues = z.infer<typeof contactSchema>;
 
 export default function ContactForm() {
   const [isSuccess, setIsSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   // 接管表单的底层状态管理，并将数据校验工作委托给外部库。
   // { resolver: zodResolver(contactSchema) } 校验引擎的注入 (resolver) zodResolver 是一个桥梁，它告诉 React Hook Form：“当你需要校验数据时，请把收集到的数据扔给 contactSchema 处理，并根据它的返回结果来决定是否报错。”
@@ -38,11 +39,24 @@ export default function ContactForm() {
     resolver: zodResolver(contactSchema),
   });
 
-  // 模拟表单提交逻辑
+  // 表单提交
   const onSubmit = async (data: ContactFormValues) => {
-    // 这里未来可以替换为真实的 API 请求（如 Formspree 或 Vercel Serverless Function）
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    console.log("提交的数据:", data);
+    setSubmitError("");
+
+    const response = await fetch("/api/contact", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      setSubmitError(result?.message || "发送失败，请稍后再试。");
+      return;
+    }
+
     setIsSuccess(true);
   };
 
@@ -98,6 +112,9 @@ export default function ContactForm() {
 
       {/* 邮箱输入 */}
       <div className="flex flex-col gap-1.5">
+        {/* resize-none:彻底禁用拖拽缩放功能，锁定文本框的大小。你给它设了几行（rows={5}），它就永远是那么大。
+        outline-none：浏览器（比如 Chrome）默认会在你点击输入框时，给它加上一圈很粗的、极其违和的蓝色高亮边框（outline）。这行代码的作用是直接“干掉”浏览器的默认蓝色发光边框。
+        ring-1 ring-accent：干掉系统默认的边框后，我们自己画一个。画一圈 1 像素宽的环（ring），颜色使用你的品牌主色（accent）。 */}
         <label
           htmlFor="email"
           className="text-[13px] font-medium text-text-secondary"
@@ -126,9 +143,6 @@ export default function ContactForm() {
         >
           留言
         </label>
-        {/* resize-none:彻底禁用拖拽缩放功能，锁定文本框的大小。你给它设了几行（rows={5}），它就永远是那么大。
-        outline-none：浏览器（比如 Chrome）默认会在你点击输入框时，给它加上一圈很粗的、极其违和的蓝色高亮边框（outline）。这行代码的作用是直接“干掉”浏览器的默认蓝色发光边框。
-        ring-1 ring-accent：干掉系统默认的边框后，我们自己画一个。画一圈 1 像素宽的环（ring），颜色使用你的品牌主色（accent）。 */}
         <textarea
           id="message"
           rows={5}
@@ -136,13 +150,16 @@ export default function ContactForm() {
           {...register("message")}
           className={fieldClass}
         />
-        {errors.message && (
-          <span className="text-xs text-red-500/80">
-            {errors.message.message}
-          </span>
-        )}
+        {/* 提示区：固定占位高度。无论是 Zod 校验错误，还是服务端发送失败，
+      都显示在这里（textarea 正下方），出现/消失都不会推动下面的按钮行 */}
+        <div className="min-h-5">
+          {(errors.message || submitError) && (
+            <span aria-live="polite" className="text-xs text-red-500/80">
+              {errors.message?.message ?? submitError}
+            </span>
+          )}
+        </div>
       </div>
-
       <div className="mt-1 flex items-center justify-between gap-3">
         <p className="text-[12px] leading-5 text-text-subtle">
           提交后我会通过邮件回复。

@@ -15,7 +15,7 @@ export default function Home() {
   const selectedProjects = projectsData.slice(0, 2);
 
   return (
-    <main className="relative w-full">
+    <div className="relative w-full">
       {/* 首页第一屏：保留原来的探照灯交互 Hero */}
       <HomeHero />
 
@@ -78,6 +78,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

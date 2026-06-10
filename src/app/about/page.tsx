@@ -58,20 +58,20 @@ const TIMELINE_DATA = [
 
 const CONTACTS = [
   {
-    href: "mailto:your.email@example.com",
+    href: "mailto:chenyufeng.edu@gmail.com",
     icon: <Mail size={13} />,
-    label: "your.email@example.com",
+    label: "chenyufeng.edu@gmail.com",
   },
   {
-    href: "https://github.com/yourusername",
+    href: "https://github.com/chenyufengedu-dev",
     icon: <FaGithub size={13} />,
-    label: "github.com/yourusername",
+    label: "github.com/chenyufengedu-dev",
     external: true,
   },
   {
-    href: "https://twitter.com/yourusername",
+    href: "https://twitter.com/CcCaraxesss",
     icon: <FaTwitter size={13} />,
-    label: "@yourusername",
+    label: "@CcCaraxesss",
     external: true,
   },
 ];

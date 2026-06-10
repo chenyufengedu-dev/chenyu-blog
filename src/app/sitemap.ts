@@ -3,7 +3,7 @@ import { MetadataRoute } from "next";
 import { getAllPostsMeta } from "@/lib/mdx";
 
 // 请将其替换为你最终部署时的真实域名
-const SITE_URL = "https://yourdomain.com";
+const SITE_URL = "https://chenyu-blog.vercel.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   // 1. 获取所有静态基础路由

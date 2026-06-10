@@ -58,7 +58,7 @@ export default async function BlogPostPage({
   let post;
   try {
     post = getPostBySlug(slug);
-  } catch (error) {
+  } catch {
     // 如果 URL 输入了不存在的 slug，直接触发 404 页面
     notFound();
   }

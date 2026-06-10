@@ -2,10 +2,10 @@
 import RSS from "rss";
 import { getAllPostsMeta } from "@/lib/mdx";
 
-const SITE_URL = "https://yourdomain.com";
+const SITE_URL = "https://chenyu-blog.vercel.app";
 
 // App Router 架构中，任何命名为 route.ts 的文件都会变成一个后端的 API 接口
-// GET()：这表示该接口只响应 HTTP 的 GET 请求。当用户的 RSS 阅读器在后台静默访问 https://yourdomain.com/feed.xml 时，就会触发这个函数。
+// GET()：这表示该接口只响应 HTTP 的 GET 请求。当用户的 RSS 阅读器在后台静默访问 https://chenyu-blog.vercel.app/feed.xml 时，就会触发这个函数。
 export async function GET() {
   // RSS 的本质是一个有着严格格式规定的 XML 文本文件。rss 这个第三方库帮我们免去了手动拼接 <xml><title>...</title></xml> 字符串的痛苦。
   const feed = new RSS({

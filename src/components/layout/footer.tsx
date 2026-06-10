@@ -39,7 +39,7 @@ export default function Footer() {
             <FaGithub size={20} />
           </Link>
           <Link
-            href="https://twitter.com"
+            href="https://twitter.com/CcCaraxesss"
             target="_blank"
             rel="noopener noreferrer"
             className="text-text-muted transition-colors duration-200 hover:text-text-primary"
@@ -48,7 +48,7 @@ export default function Footer() {
             <FaTwitter size={20} />
           </Link>
           <Link
-            href="mailto:your@email.com"
+            href="mailto:chenyufeng.edu@gmail.com"
             className="text-text-muted transition-colors duration-200 hover:text-text-primary"
             aria-label="Email"
           >

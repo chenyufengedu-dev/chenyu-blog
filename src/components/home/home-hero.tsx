@@ -1,6 +1,6 @@
 "use client";
 import { motion, type Transition } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // 💡 调节指南：顶层散落词的分布
 // x 和 y 使用百分比，这样能自适应不同屏幕大小。若想增加词汇，直接在这里添加即可。
@@ -31,6 +31,17 @@ const TITLE_INTRO_TRANSITION = {
 
 export default function HomeHero() {
   const heroRef = useRef<HTMLElement>(null);
+  //判断是不是手机端
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // matchMedia 判断视口宽度；768px 对应 Tailwind 的 md 断点
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update(); // 首次同步
+    mq.addEventListener("change", update); // 旋转屏幕/缩放窗口时更新
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   // 初始值放在 Hero 中心附近，避免页面刚加载时标题被屏幕外坐标拉歪。
   // 真正的鼠标位置会在第一次 mousemove 时接管。
@@ -46,7 +57,16 @@ export default function HomeHero() {
   // 这里不用 state，是为了避免鼠标第一次移动时触发 React 重渲染，导致 RAF 被重启。
   const hasPointerEnteredRef = useRef(false);
 
+  // 移动端：顶层是否已展开。点击任意位置切换，遮罩固定从屏幕正中心展开
+  const [revealed, setRevealed] = useState(false);
+
+  // 点击/触摸切换：展开 ↔ 收起
+  const handleTap = () => setRevealed((v) => !v);
+
   useEffect(() => {
+    // 移动端不启动探照灯逻辑，省性能也避免触屏下卡在初始状态
+    if (isMobile) return;
+
     const heroElement = heroRef.current;
     if (!heroElement) return;
 
@@ -134,7 +154,107 @@ export default function HomeHero() {
       heroElement.removeEventListener("mousemove", onMove);
       cancelAnimationFrame(rafId.current);
     };
-  }, []);
+  }, [isMobile]);
+
+  // ── 移动端：点击/触摸切换两层（探照灯的触屏版） ──
+  // 触屏没有 mousemove，所以不复用上面的 RAF；改用「点击点为圆心 + clip-path 过渡」
+  if (isMobile) {
+    return (
+      <section
+        onClick={handleTap}
+        // 高度控制在 70vh：首屏聚焦标题，又能露出下方的 Recent Writing 引导继续浏览。
+        // 用内联 vh（普遍支持，无需 Tailwind 编译任意值）。
+        // 不用 cursor-none，触屏无需隐藏光标。
+        style={{ minHeight: "70vh" }}
+        className="relative flex w-full flex-col items-center justify-center overflow-hidden bg-white select-none dark:bg-[#0a0a0a]"
+      >
+        {/* ── 底层世界：英文标题 + 点阵 ── */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          {/* 浅色模式：深色点 */}
+          <div
+            className="absolute inset-0 pointer-events-none dark:hidden"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, rgba(0,0,0,0.12) 1px, transparent 1px)",
+              backgroundSize: "24px 24px",
+            }}
+          />
+          {/* 深色模式：浅色点 */}
+          <div
+            className="absolute inset-0 pointer-events-none hidden dark:block"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px)",
+              backgroundSize: "24px 24px",
+            }}
+          />
+          <h1
+            className="text-center leading-[1.1] tracking-[-0.03em]"
+            style={{ fontSize: "clamp(30px, 8.5vw, 46px)" }}
+          >
+            <span className="font-black text-[#111827] dark:text-[#f5f5f5]">
+              HELLO, I&apos;M{" "}
+            </span>
+            <span
+              className="font-extralight italic text-[#111827] dark:text-[#f5f5f5]"
+              style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+            >
+              Chenyu
+            </span>
+          </h1>
+        </div>
+
+        {/* ── 顶层世界：中文标题，clip-path 圆心 = 点击点，靠 CSS 过渡平滑展开/收起 ── */}
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-[#111111] dark:bg-white"
+          style={{
+            // 始终以屏幕正中心为圆心。半径 165px（直径 330），小于常见手机宽度，
+            // 保证整个圆完整可见、不被左右屏幕边缘裁切；未展开时半径 0。
+            clipPath: revealed
+              ? "circle(165px at 50% 50%)"
+              : "circle(0px at 50% 50%)",
+            // 这条过渡替代桌面的 RAF，缓动曲线与标题入场动画保持一致
+            transition: "clip-path 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        >
+          {/* 浅色模式：白点（在黑底上） */}
+          <div
+            className="absolute inset-0 pointer-events-none dark:hidden"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)",
+              backgroundSize: "24px 24px",
+            }}
+          />
+          {/* 深色模式：黑点（在白底上） */}
+          <div
+            className="absolute inset-0 pointer-events-none hidden dark:block"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, rgba(0,0,0,0.12) 1px, transparent 1px)",
+              backgroundSize: "24px 24px",
+            }}
+          />
+          <h1
+            className="text-center leading-[1.1] tracking-[-0.03em]"
+            style={{ fontSize: "clamp(30px, 8.5vw, 46px)" }}
+          >
+            <span className="font-black text-white dark:text-[#111827]">
+              你好，我是{" "}
+            </span>
+            <span
+              // Chenyu 沿用品牌色 #ea580c，与桌面端视觉锚点一致
+              className="font-extralight italic text-[#ea580c]"
+              style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+            >
+              Chenyu
+            </span>
+          </h1>
+        </div>
+
+      </section>
+    );
+  }
 
   return (
     // cursor-none 隐藏了系统鼠标，完全靠交互引导

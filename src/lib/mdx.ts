@@ -28,8 +28,16 @@ export const getPostBySlug = (slug: string) => {
   // 使用 gray-matter 分离顶部的 YAML metadata 和底部的正文
   const { data, content } = matter(fileContent);
 
+  // 给文章 frontmatter 加兜底，避免漏字段崩溃 （比如 tags 漏写时后续 .map / .includes 崩溃）
   return {
-    metadata: { ...data, slug: realSlug } as BlogPostMetadata,
+    metadata: {
+      title: data.title ?? "无标题",
+      date: data.date ?? "",
+      summary: data.summary ?? "",
+      // 关键：tags 漏写时兜底为空数组，避免后续 .map / .includes 崩溃
+      tags: Array.isArray(data.tags) ? data.tags : [],
+      slug: realSlug,
+    } as BlogPostMetadata,
     content,
   };
 };

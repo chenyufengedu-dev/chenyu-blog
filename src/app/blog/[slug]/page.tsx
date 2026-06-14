@@ -17,17 +17,24 @@ export async function generateStaticParams() {
 
 // 2. 自定义 MDX 组件：你可以在这里覆盖 Markdown 的默认标签样式
 const mdxComponents = {
-  a: (props: ComponentPropsWithoutRef<"a">) => (
-    // 带有主色调（text-accent）、底部有 30%
-    // 透明度的下划线（decoration-accent/30），且鼠标悬停时下划线变深（hover:decoration-accent）
-    // underline-offset-4 text-underline-offset: 4px; 强制将下划线往下推移 4 个像素。
-    <a
-      {...props}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="font-medium text-accent underline decoration-accent/30 underline-offset-4 transition-colors hover:decoration-accent"
-    />
-  ),
+  a: (props: ComponentPropsWithoutRef<"a">) => {
+    // 解决文章正文里所有链接都被强制新标签页打开的问题
+    // 判断是否为外部链接：以 http 开头的才算站外
+    const isExternal = props.href?.startsWith("http");
+
+    return (
+      // 带有主色调（text-accent）、底部有 30%
+      // 透明度的下划线（decoration-accent/30），且鼠标悬停时下划线变深（hover:decoration-accent）
+      // underline-offset-4 text-underline-offset: 4px; 强制将下划线往下推移 4 个像素。
+      <a
+        {...props}
+        // 只有外链才新开标签页；站内链接（/about 等）保持当前页跳转
+        target={isExternal ? "_blank" : undefined}
+        rel={isExternal ? "noopener noreferrer" : undefined}
+        className="font-medium text-accent underline decoration-accent/30 underline-offset-4 transition-colors hover:decoration-accent"
+      />
+    );
+  },
 
   // ComponentPropsWithoutRef，精准告诉 TypeScript：
   // “这个 props 里装的，完全是一个原生 <a>、<code> 或 <img> 标签该有的所有合法属性”。

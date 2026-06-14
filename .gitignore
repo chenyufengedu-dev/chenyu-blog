@@ -42,3 +42,5 @@ next-env.d.ts
 
 # AI 辅助工具缓存
 .claude/
+# 头脑风暴可视化缓存
+.superpowers/

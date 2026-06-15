@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript、Next.js（App Router）、Tailwind v4、Vitest（仅用于纯逻辑单测）。
 
+> 📖 **给作者的阅读说明**：本文每段代码都加了逐行中文注释；遇到 TypeScript / React 的语法点会用「💡 新手提示」单独解释。照着敲的时候，先读注释理解再写，不要纯复制。
+
 ---
 
 ## 文件结构
@@ -53,6 +55,8 @@ vitest.config.ts      # 测试配置（新增）
 - Create: `vitest.config.ts`
 - Modify: `package.json`（scripts 增加 `test`）
 
+> Vitest 是一个测试工具：你写一段"断言"（比如"这个函数输入 4 应该返回 5 个座位"），它帮你自动验证代码对不对。后面纯逻辑的函数都会配测试，这样你改完能立刻知道有没有改坏。
+
 - [ ] **Step 1: 安装依赖**
 
 Run:
@@ -68,13 +72,17 @@ Create `vitest.config.ts`:
 import { defineConfig } from "vitest/config";
 import path from "path";
 
+// defineConfig 只是帮你把配置对象包一层，让编辑器有类型提示
 export default defineConfig({
   test: {
-    environment: "node", // 纯逻辑测试不需要浏览器环境
+    // 我们测的都是纯逻辑（不涉及浏览器 DOM），所以用最轻量的 node 环境
+    environment: "node",
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"), // 让测试也能用 @/ 别名
+      // 让测试文件里也能用 "@/..." 这种路径（等价于 src/...）
+      // 否则测试里 import "@/lib/..." 会找不到文件
+      "@": path.resolve(__dirname, "./src"),
     },
   },
 });
@@ -86,16 +94,19 @@ Modify `package.json` 的 `"scripts"`，增加一行：
 ```json
 "test": "vitest run"
 ```
+（`vitest run` 表示"跑一次就退出"，而不是一直盯着文件变化。）
 
 - [ ] **Step 4: 写一个临时冒烟测试**
 
 Create `src/lib/cyber-office/__tests__/smoke.test.ts`:
 ```ts
+// 这只是验证"测试框架本身能跑"的临时文件，下一步就删
 import { describe, it, expect } from "vitest";
 
+// describe = 一组相关测试的分组名；it = 一条具体测试；expect = 断言
 describe("smoke", () => {
   it("1 + 1 = 2", () => {
-    expect(1 + 1).toBe(2);
+    expect(1 + 1).toBe(2); // 断言：1+1 的结果应当等于 2
   });
 });
 ```
@@ -123,11 +134,15 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Files:**
 - Create: `src/lib/cyber-office/types.ts`
 
+> 这个文件只定义"数据长什么样"，不产生任何运行代码。TypeScript 的类型像"模具"——规定每种数据必须有哪些字段、是什么类型，写错了编辑器会立刻标红。
+
 - [ ] **Step 1: 写类型定义**
 
 Create `src/lib/cyber-office/types.ts`:
 ```ts
-// 角色 ID：固定枚举，避免拼写错误
+// 角色 ID：用「联合类型」把允许的取值一个个列死。
+// 💡 新手提示：a | b | c 读作"a 或 b 或 c"，表示这个值只能是这几个字符串之一，
+//    写成 "hostt" 之类的拼写错误会被立刻报错。
 export type RoleId =
   | "host" // 主持人
   | "pm" // 产品经理
@@ -137,18 +152,20 @@ export type RoleId =
   | "recorder" // 记录员
   | "summarizer"; // 总结 Agent
 
-// 小人当前的动作状态，决定渲染样式/动画
+// 小人当前的动作状态，决定渲染成什么样式/动画
 export type RoleStatus = "idle" | "thinking" | "raising_hand" | "speaking";
 
-// 预设角色的静态信息
+// 预设角色的「静态信息」（不会随会议变化的部分）
 export interface Role {
   id: RoleId;
-  name: string; // 显示名
+  name: string; // 显示名，如"产品经理"
   title: string; // 一句话职责
-  color: string; // 占位方块颜色（P4 换成 sprite 前的临时视觉）
+  color: string; // 占位方块颜色（P4 换成像素 sprite 前的临时视觉）
 }
 
-// 服务端/回放推给前端的事件。前端只认这套事件，不关心它来自写死数组还是真实 API。
+// 服务端/回放推给前端的「事件」。
+// 💡 新手提示：这同样是联合类型，但每个分支是一个对象。它们都有 type 字段，
+//    靠 type 区分是哪种事件——这叫"可辨识联合"，后面 reducer 里 switch(type) 就靠它。
 export type OfficeEvent =
   | { type: "meeting_start"; topic: string; participants: RoleId[] }
   | { type: "host_speak"; text: string } // 主持人开场/串场
@@ -160,30 +177,32 @@ export type OfficeEvent =
   | { type: "meeting_end" }
   | { type: "error"; message: string };
 
-// 单个角色的运行时状态
+// 单个角色的「运行时状态」（会随会议进程变化的部分）
 export interface RoleRuntime {
   id: RoleId;
   status: RoleStatus;
-  bubble: string; // 当前气泡文字（token 事件不断追加）
+  bubble: string; // 当前气泡文字（token 事件不断往后追加）
 }
 
-// 整场会议的运行时状态（reducer 的输出，组件渲染的输入）
+// 整场会议的运行时状态：reducer 算出它，组件渲染它。
 export interface MeetingState {
-  phase: "idle" | "running" | "ended";
+  phase: "idle" | "running" | "ended"; // 会议处于哪个阶段
   topic: string;
   participants: RoleId[]; // 本场参会者（含 host）
-  roles: Record<string, RoleRuntime>; // key 为 RoleId
-  activeSpeaker: RoleId | null; // 当前发言者
+  // 💡 新手提示：Record<string, RoleRuntime> 表示"一个对象，键是字符串、值是 RoleRuntime"。
+  //    我们用角色 id 当键，像查字典一样 roles["pm"] 拿到产品经理的状态。
+  roles: Record<string, RoleRuntime>;
+  activeSpeaker: RoleId | null; // 当前发言者；没人发言时是 null
   hostText: string; // 主持人最近一句话
-  summary: string | null; // 总结产物
+  summary: string | null; // 总结产物；还没总结时是 null
   error: string | null;
 }
 ```
 
 - [ ] **Step 2: 类型检查通过即提交**
 
-Run: `npx tsc --noEmit`
-Expected: 无报错（types.ts 仅类型，不产生运行代码）。
+Run: `npx tsc --noEmit`（只检查类型、不生成文件）
+Expected: 无报错。
 
 ```bash
 git add src/lib/cyber-office/types.ts
@@ -206,6 +225,8 @@ Create `src/lib/cyber-office/roles.ts`:
 import type { Role, RoleId } from "./types";
 
 // 预设角色库。P5 才做"轻量自定义"，本阶段用固定数据。
+// 💡 新手提示：Record<RoleId, Role> 要求"每个 RoleId 都必须有一条对应的 Role"，
+//    少写一个角色 TypeScript 就会报错——帮你避免漏配。
 export const PRESET_ROLES: Record<RoleId, Role> = {
   host: { id: "host", name: "主持人", title: "分配发言、推动讨论", color: "#ea580c" },
   pm: { id: "pm", name: "产品经理", title: "把握目标与用户价值", color: "#2563eb" },
@@ -216,7 +237,9 @@ export const PRESET_ROLES: Record<RoleId, Role> = {
   summarizer: { id: "summarizer", name: "总结 Agent", title: "汇总产出结论", color: "#ca8a04" },
 };
 
-// 取出某个角色（找不到时给一个安全兜底，避免渲染崩溃）
+// 按 id 取出某个角色。
+// 💡 新手提示：?? 是"空值兜底"——如果 PRESET_ROLES[id] 是 undefined（没找到），
+//    就用 ?? 右边那个临时对象，保证函数永远返回一个 Role，渲染时不会因 undefined 崩溃。
 export function getRole(id: RoleId): Role {
   return PRESET_ROLES[id] ?? { id, name: id, title: "", color: "#9ca3af" };
 }
@@ -242,6 +265,8 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Create: `src/lib/cyber-office/seats.ts`
 - Test: `src/lib/cyber-office/__tests__/seats.test.ts`
 
+> 这是 TDD（测试驱动）：先写测试（描述"我期望它怎么表现"），跑一次看它失败，再写实现让它变绿。好处是你一上来就把"对的标准"定下来了。
+
 - [ ] **Step 1: 先写失败的测试**
 
 Create `src/lib/cyber-office/__tests__/seats.test.ts`:
@@ -251,19 +276,22 @@ import { computeSeatPositions } from "@/lib/cyber-office/seats";
 
 describe("computeSeatPositions", () => {
   it("返回与人数相同数量的座位", () => {
+    // 5 个人、半径 100、圆心 (170,170)
     const seats = computeSeatPositions(5, 100, 170, 170);
-    expect(seats).toHaveLength(5);
+    expect(seats).toHaveLength(5); // 应当返回 5 个座位
   });
 
   it("第一个座位在正上方（圆心正上 radius 处）", () => {
     const seats = computeSeatPositions(4, 100, 170, 170);
-    // 起始角度 -90°，即正上方：x≈圆心x, y≈圆心y-radius
+    // 起始角度 -90°（正上方）：x 不变 ≈170，y 比圆心高 radius ≈170-100=70
+    // 💡 toBeCloseTo 用于浮点数比较（避免 0.0000001 误差），第二个参数是精度
     expect(seats[0].x).toBeCloseTo(170, 5);
     expect(seats[0].y).toBeCloseTo(70, 5);
   });
 
   it("座位均匀分布（4 人时第二个在正右方）", () => {
     const seats = computeSeatPositions(4, 100, 170, 170);
+    // 4 个人每隔 90°，第二个在正右方：x ≈170+100=270，y ≈170
     expect(seats[1].x).toBeCloseTo(270, 5);
     expect(seats[1].y).toBeCloseTo(170, 5);
   });
@@ -273,20 +301,21 @@ describe("computeSeatPositions", () => {
 - [ ] **Step 2: 运行测试确认失败**
 
 Run: `npm run test`
-Expected: FAIL，提示找不到 `computeSeatPositions` / 模块不存在。
+Expected: FAIL，提示找不到 `computeSeatPositions` / 模块不存在。（这是好事，说明测试在真正检查。）
 
 - [ ] **Step 3: 实现座位计算**
 
 Create `src/lib/cyber-office/seats.ts`:
 ```ts
+// 一个座位的位置信息
 export interface SeatPosition {
   x: number;
   y: number;
-  angle: number; // 弧度，预留给将来朝向用
+  angle: number; // 该座位在圆周上的角度（弧度），预留给将来朝向用
 }
 
 // 把 count 个座位均匀排在以 (cx,cy) 为圆心、radius 为半径的圆周上。
-// 从正上方（-90°）开始顺时针排列。
+// 从正上方（-90°）开始，顺时针依次排列。
 export function computeSeatPositions(
   count: number,
   radius: number,
@@ -295,8 +324,11 @@ export function computeSeatPositions(
 ): SeatPosition[] {
   const seats: SeatPosition[] = [];
   for (let i = 0; i < count; i++) {
+    // 第 i 个座位的角度：从 -90° 起，每个间隔 360/count 度
     const deg = -90 + (360 / count) * i;
+    // 三角函数用的是弧度，所以把角度乘 π/180 转成弧度
     const angle = (deg * Math.PI) / 180;
+    // 圆周上一点的坐标公式：x = 圆心x + 半径·cos(角度)，y = 圆心y + 半径·sin(角度)
     seats.push({
       x: cx + radius * Math.cos(angle),
       y: cy + radius * Math.sin(angle),
@@ -306,6 +338,8 @@ export function computeSeatPositions(
   return seats;
 }
 ```
+
+> 💡 **为什么这里要懂一点三角**：圆桌座位本质是"把人均匀放在一个圆上"。`cos` 管水平、`sin` 管垂直，角度从 -90°（正上）开始转一圈。你不用会推导，记住"圆周布点 = 圆心 + 半径×(cos, sin)"这个套路即可。
 
 - [ ] **Step 4: 运行测试确认通过**
 
@@ -334,39 +368,52 @@ Create `src/components/cyber-office/character.tsx`:
 ```tsx
 import type { RoleStatus } from "@/lib/cyber-office/types";
 
+// 💡 新手提示：interface 在这里定义"这个组件接收哪些 props（外部传入的参数）"。
 interface CharacterProps {
   name: string;
   color: string;
-  status: RoleStatus;
+  status: RoleStatus; // idle / thinking / raising_hand / speaking
 }
 
-// P0/P1 用纯色方块占位（设计文档选项 c）。P4 再替换成像素 sprite。
+// 一个角色小人。P0/P1 用纯色方块占位（设计文档选项 c），P4 再换成像素 sprite。
+// 💡 { name, color, status } 是"解构"——直接从传入的 props 对象里把这三个字段拆出来用。
 export default function Character({ name, color, status }: CharacterProps) {
+  // 举手或正在说话时，名字用橙色高亮，突出"当前在场上的人"
   const isActive = status === "speaking" || status === "raising_hand";
 
   return (
     <div className="flex flex-col items-center gap-1">
-      {/* 举手时小人轻微上移，发言时描边高亮 */}
+      {/* 小人方块本体 */}
       <div
         className="relative flex h-11 w-11 items-center justify-center rounded-[3px] text-white text-xs font-mono transition-transform duration-300"
+        // 动态样式（颜色、位移、描边随状态变）写在 style 里，因为值是计算出来的
         style={{
           backgroundColor: color,
+          // 举手时整个小人轻微上移 6px，做出"站起来"的感觉
           transform: status === "raising_hand" ? "translateY(-6px)" : "none",
+          // 说话时加一圈橙色描边（box-shadow 当描边用），表示"麦克风在他手上"
           boxShadow: status === "speaking" ? "0 0 0 2px #ea580c" : "none",
         }}
       >
+        {/* 方块里显示名字前两个字当头像占位，如"产品" */}
         {name.slice(0, 2)}
-        {/* 举手图标 */}
+
+        {/* 举手图标：仅在 raising_hand 状态显示 */}
+        {/* 💡 {条件 && <JSX>} 是 React 常用写法：条件为真才渲染后面的元素 */}
         {status === "raising_hand" && (
           <span className="absolute -top-4 text-sm">✋</span>
         )}
-        {/* 思考省略号 */}
+
+        {/* 思考省略号：仅在 thinking 状态显示 */}
         {status === "thinking" && (
           <span className="absolute -top-4 text-sm text-text-muted">…</span>
         )}
       </div>
+
+      {/* 名字 */}
       <span
         className="text-[10px] font-medium"
+        // 活跃时橙色，否则用次要文字色（CSS 变量来自你的设计系统）
         style={{ color: isActive ? "#ea580c" : "var(--text-muted)" }}
       >
         {name}
@@ -400,19 +447,22 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 Create `src/components/cyber-office/office-scene.tsx`:
 ```tsx
-"use client";
+"use client"; // 这个组件后面会随状态变化，标记为客户端组件
 
 import type { MeetingState } from "@/lib/cyber-office/types";
 import { computeSeatPositions } from "@/lib/cyber-office/seats";
 import { getRole } from "@/lib/cyber-office/roles";
 import Character from "./character";
 
+// 一组写死的尺寸常量（单位 px），方便统一调整布局
 const SCENE = 340; // 场景边长（正方形）
-const CENTER = SCENE / 2;
+const CENTER = SCENE / 2; // 圆心坐标（场景正中，170）
 const RADIUS = 120; // 座位环半径
-const CHAR = 44; // 小人尺寸，用于居中偏移
+const CHAR = 44; // 小人方块尺寸，用于把小人"中心"对准座位点
 
+// 这个组件只负责"把 state 画出来"，不含任何逻辑——纯展示。
 export default function OfficeScene({ state }: { state: MeetingState }) {
+  // 根据参会人数算出每个座位的坐标
   const seats = computeSeatPositions(
     state.participants.length,
     RADIUS,
@@ -425,30 +475,35 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
       className="relative mx-auto rounded-lg border border-border bg-bg-subtle"
       style={{ width: SCENE, height: SCENE }}
     >
-      {/* 中央圆桌 */}
+      {/* 中央圆桌：一个绝对定位、居中的圆 */}
       <div
         className="absolute rounded-full border border-border bg-background"
         style={{
           width: RADIUS * 1.1,
           height: RADIUS * 1.1,
+          // 让圆桌正好居中：左上角 = 圆心 - 自身一半
           left: CENTER - (RADIUS * 1.1) / 2,
           top: CENTER - (RADIUS * 1.1) / 2,
         }}
       />
-      {/* 一圈小人 */}
+
+      {/* 一圈小人：遍历参会者，每个按座位坐标绝对定位 */}
+      {/* 💡 .map() 把数组里每一项变成一个 JSX 元素；key 帮 React 区分谁是谁 */}
       {state.participants.map((id, i) => {
-        const seat = seats[i];
-        const runtime = state.roles[id];
-        const role = getRole(id);
+        const seat = seats[i]; // 第 i 个人的座位坐标
+        const runtime = state.roles[id]; // 这个人的运行时状态（状态/气泡）
+        const role = getRole(id); // 这个人的静态信息（名字/颜色）
         return (
           <div
             key={id}
             className="absolute"
+            // 把小人的中心对准座位点：左上角 = 座位坐标 - 小人尺寸一半
             style={{ left: seat.x - CHAR / 2, top: seat.y - CHAR / 2 }}
           >
             <Character
               name={role.name}
               color={role.color}
+              // ?. 和 ?? 双保险：runtime 万一不存在，就当 idle，避免崩溃
               status={runtime?.status ?? "idle"}
             />
           </div>
@@ -458,6 +513,8 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
   );
 }
 ```
+
+> 💡 **为什么小人用 `position: absolute` 而不是 flex 排成一行**：flex 只能把元素排成行/列，而我们要把人摆在"圆周上的任意 (x, y) 点"。绝对定位 + 计算好的 `left/top` 才能精确控制每个人的位置。
 
 - [ ] **Step 2: 写路由页（先用一个临时静态 state 让场景显示出来）**
 
@@ -472,7 +529,7 @@ export const metadata: Metadata = {
   description: "一个嵌入网站的多 Agent 协作实验室",
 };
 
-// P0 临时静态状态：所有人 idle，仅为把场景画出来。P1 会换成真实回放状态。
+// P0 临时静态状态：所有人 idle，只为把场景画出来。P1 会换成真实回放状态。
 const staticState: MeetingState = {
   phase: "idle",
   topic: "",
@@ -546,6 +603,8 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Create: `src/lib/cyber-office/reducer.ts`
 - Test: `src/lib/cyber-office/__tests__/reducer.test.ts`
 
+> **这是 P1 最核心、也最值得吃透的文件。** "reducer"就是一个函数：给它「当前状态 + 一个事件」，它返回「新状态」。整场会议 = 从空状态开始，把一串事件一个个喂进去，状态就一步步演变。回放和将来真实 API 都只是"事件来源不同"，这个函数完全复用。
+
 - [ ] **Step 1: 先写失败的测试**
 
 Create `src/lib/cyber-office/__tests__/reducer.test.ts`:
@@ -555,6 +614,7 @@ import { applyEvent, createInitialState } from "@/lib/cyber-office/reducer";
 
 describe("applyEvent", () => {
   it("meeting_start 初始化参会者且所有人 idle", () => {
+    // createInitialState() 给一个空白起点，再喂一个 meeting_start 事件
     const s = applyEvent(createInitialState(), {
       type: "meeting_start",
       topic: "测试议题",
@@ -585,7 +645,7 @@ describe("applyEvent", () => {
     s = applyEvent(s, { type: "speaking_start", speaker: "pm" });
     s = applyEvent(s, { type: "token", speaker: "pm", delta: "你" });
     s = applyEvent(s, { type: "token", speaker: "pm", delta: "好" });
-    expect(s.roles["pm"].bubble).toBe("你好");
+    expect(s.roles["pm"].bubble).toBe("你好"); // 两个 token 拼起来
     expect(s.roles["pm"].status).toBe("speaking");
   });
 
@@ -630,7 +690,7 @@ import type {
   RoleRuntime,
 } from "./types";
 
-// 空的初始状态。每次回放/实时会从 meeting_start 重新初始化。
+// 返回一个"空白会议"。每次开始回放/实时，第一个 meeting_start 事件会基于它重建。
 export function createInitialState(): MeetingState {
   return {
     phase: "idle",
@@ -644,68 +704,94 @@ export function createInitialState(): MeetingState {
   };
 }
 
-// 修改某个角色的运行时状态（返回新对象，保持不可变更新）
+// 小工具：修改"某一个角色"的运行时状态，返回一个全新的 MeetingState。
+// 💡 新手提示：这里全程不直接改旧对象，而是用 {...旧的, 要改的字段} 复制出新对象。
+//    这叫"不可变更新"——React 靠"对象引用变了没"来判断要不要重渲染，
+//    如果你偷偷改旧对象，React 可能察觉不到、界面不更新。
 function patchRole(
   state: MeetingState,
   id: RoleId,
-  patch: Partial<RoleRuntime>,
+  patch: Partial<RoleRuntime>, // Partial 表示"RoleRuntime 的字段都可选"，只传想改的
 ): MeetingState {
+  // 取出这个角色现有状态；万一没有就给个默认值
   const prev = state.roles[id] ?? { id, status: "idle", bubble: "" };
   return {
-    ...state,
-    roles: { ...state.roles, [id]: { ...prev, ...patch } },
+    ...state, // 复制整个 state
+    roles: {
+      ...state.roles, // 复制所有角色
+      [id]: { ...prev, ...patch }, // 只覆盖这一个角色里被 patch 指定的字段
+    },
   };
 }
 
-// 纯函数：根据事件算出新状态。这是回放与未来实时流共用的核心。
+// 核心纯函数：输入旧 state + 一个事件，输出新 state。
+// 💡 switch (event.type) 按事件种类分别处理。因为 OfficeEvent 是"可辨识联合"，
+//    在每个 case 分支里 TypeScript 能自动知道 event 还有哪些字段（如 event.speaker）。
 export function applyEvent(
   state: MeetingState,
   event: OfficeEvent,
 ): MeetingState {
   switch (event.type) {
     case "meeting_start": {
+      // 为每个参会者建一条初始 runtime（都 idle、气泡为空）
       const roles: Record<string, RoleRuntime> = {};
       for (const id of event.participants) {
         roles[id] = { id, status: "idle", bubble: "" };
       }
       return {
-        ...createInitialState(),
+        ...createInitialState(), // 先回到空白，清掉上一场残留
         phase: "running",
         topic: event.topic,
         participants: event.participants,
         roles,
       };
     }
+
     case "host_speak":
+      // 主持人说话：只更新 hostText
       return { ...state, hostText: event.text };
+
     case "call_on":
+      // 点名：把当前发言者设为他，并让他举手
       return patchRole(
         { ...state, activeSpeaker: event.speaker },
         event.speaker,
         { status: "raising_hand" },
       );
+
     case "speaking_start":
+      // 开始说话：状态变 speaking，并清空气泡（准备逐字填）
       return patchRole({ ...state, activeSpeaker: event.speaker }, event.speaker, {
         status: "speaking",
         bubble: "",
       });
+
     case "token": {
+      // 收到一个字：把它追加到该角色现有气泡后面
       const prev = state.roles[event.speaker];
       return patchRole(state, event.speaker, {
         bubble: (prev?.bubble ?? "") + event.delta,
       });
     }
+
     case "speaking_end":
+      // 说完：回到 idle，台上没人了
       return patchRole({ ...state, activeSpeaker: null }, event.speaker, {
         status: "idle",
       });
+
     case "summary":
+      // 总结产物落到 summary 字段
       return { ...state, summary: event.outline };
+
     case "meeting_end":
       return { ...state, phase: "ended", activeSpeaker: null };
+
     case "error":
       return { ...state, phase: "ended", error: event.message };
+
     default:
+      // 未知事件：原样返回，不报错（向前兼容）
       return state;
   }
 }
@@ -736,19 +822,23 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 Create `src/components/cyber-office/speech-bubble.tsx`:
 ```tsx
-// 头顶气泡。文字内容由外部传入（来自 state.roles[id].bubble），
-// 本组件不关心流式逻辑——文字是逐字追加还是一次给完都照样显示。
+// 头顶气泡。文字由外部传入（来自 state.roles[id].bubble）。
+// 本组件不关心"流式"——文字是逐字追加还是一次给完，它都照样显示。
 export default function SpeechBubble({ text }: { text: string }) {
+  // 没文字就不渲染气泡（提前 return，React 里返回 null = 什么都不画）
   if (!text) return null;
+
   return (
     <div className="absolute bottom-full left-1/2 mb-1 w-40 -translate-x-1/2 rounded-md border border-border bg-background px-2.5 py-1.5 text-[11px] leading-snug text-text-secondary shadow-sm">
       {text}
-      {/* 小尾巴 */}
+      {/* 气泡下方的小三角尾巴：用一个旋转 45° 的小方块伪装 */}
       <span className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1 rotate-45 border-b border-r border-border bg-background" />
     </div>
   );
 }
 ```
+
+> 💡 这些 Tailwind 类大多是定位：`absolute bottom-full` 把气泡顶到小人正上方，`left-1/2 -translate-x-1/2` 是经典的"水平居中"组合。看不懂具体类名没关系，知道它整体是"在小人头顶画一个带尾巴的对话框"即可。
 
 - [ ] **Step 2: 类型检查并提交**
 
@@ -771,18 +861,19 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 - [ ] **Step 1: 在小人上方挂气泡**
 
-Modify `src/components/cyber-office/office-scene.tsx`：先在顶部 import 处加：
+Modify `src/components/cyber-office/office-scene.tsx`：先在顶部 import 处加一行：
 ```tsx
 import SpeechBubble from "./speech-bubble";
 ```
 
-然后把渲染小人的那个 `<div>` 块（`style={{ left: seat.x - CHAR / 2, ... }}` 那个）替换为：
+然后把渲染单个小人的那个 `<div>`（带 `style={{ left: seat.x - CHAR / 2, ... }}` 的）替换成下面这版——多包一层 `relative` 容器，把气泡放在小人上方：
 ```tsx
           <div
             key={id}
             className="absolute"
             style={{ left: seat.x - CHAR / 2, top: seat.y - CHAR / 2 }}
           >
+            {/* relative 让气泡能相对这个小人定位（气泡内部是 absolute bottom-full） */}
             <div className="relative">
               <SpeechBubble text={runtime?.bubble ?? ""} />
               <Character
@@ -813,15 +904,19 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Files:**
 - Create: `src/lib/cyber-office/sample-meeting.ts`
 
+> 这就是 P1 回放的"剧本"——一串事件，喂给 reducer 就能演一场完整会议。将来 P2 接真实 API 后，这串事件会改由后端实时生成，但前端播放逻辑完全不变。
+
 - [ ] **Step 1: 写样本事件数组**
 
 Create `src/lib/cyber-office/sample-meeting.ts`:
 ```ts
 import type { OfficeEvent, RoleId } from "./types";
 
-// 把一句话拆成「开始说 → 逐字 token → 说完」三段事件，模拟流式输出
+// 小工具：把"某人说一句话"展开成三段事件：开始说 → 逐字 token → 说完。
+// 这样播放时就有"一个字一个字蹦出来"的流式打字效果。
 function speak(speaker: RoleId, text: string): OfficeEvent[] {
   const events: OfficeEvent[] = [{ type: "speaking_start", speaker }];
+  // 把整句话拆成单个字符，每个字符生成一个 token 事件
   for (const ch of text) {
     events.push({ type: "token", speaker, delta: ch });
   }
@@ -829,7 +924,9 @@ function speak(speaker: RoleId, text: string): OfficeEvent[] {
   return events;
 }
 
-// 一场写死的样本会议（P1 回放用）。议题贴合本人方向。
+// 一场写死的样本会议（议题贴合本人方向）。
+// 💡 ...speak(...) 里的 ... 是"展开"：把 speak() 返回的那一串事件，
+//    平铺进这个大数组里（而不是塞成嵌套数组）。
 export const SAMPLE_MEETING: OfficeEvent[] = [
   {
     type: "meeting_start",
@@ -877,6 +974,8 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Files:**
 - Create: `src/components/cyber-office/use-replay.ts`
 
+> hook（以 `use` 开头的函数）是 React 里"把一段带状态的逻辑打包复用"的方式。这个 `useReplay` 负责：把样本事件按不同的时间间隔，一条一条喂给 reducer，从而让场景动起来。
+
 - [ ] **Step 1: 写 hook**
 
 Create `src/components/cyber-office/use-replay.ts`:
@@ -887,11 +986,11 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { OfficeEvent } from "@/lib/cyber-office/types";
 import { applyEvent, createInitialState } from "@/lib/cyber-office/reducer";
 
-// 不同事件的播放间隔（毫秒）。token 很快，营造逐字打字感。
+// 不同事件的播放间隔（毫秒）。token 很短，营造逐字打字感；说完后停顿久一点。
 function delayFor(e: OfficeEvent): number {
   switch (e.type) {
     case "token":
-      return 40;
+      return 40; // 每个字 40ms，像打字机
     case "host_speak":
       return 900;
     case "call_on":
@@ -908,29 +1007,36 @@ function delayFor(e: OfficeEvent): number {
 }
 
 export function useReplay(events: OfficeEvent[]) {
+  // 💡 useReducer：React 内置 hook。把 reducer 交给它管理状态。
+  //    第三个参数 createInitialState 是"惰性初始化"——首次渲染时调用它得到初始 state。
   const [state, dispatch] = useReducer(applyEvent, undefined, createInitialState);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const indexRef = useRef(0);
-  const [tick, setTick] = useState(0); // 每播一条事件 +1，用来重新触发下面的 effect
 
+  const [isPlaying, setIsPlaying] = useState(false); // 是否正在播放
+  const indexRef = useRef(0); // 当前播到第几条事件（用 ref 存，改它不触发重渲染）
+  const [tick, setTick] = useState(0); // 每播一条事件 +1，专门用来"再次唤醒"下面的 effect
+
+  // start：从头开始播放。useCallback 让这个函数引用稳定，避免不必要的重建。
   const start = useCallback(() => {
     indexRef.current = 0;
     setTick(0);
     setIsPlaying(true);
   }, []);
 
+  // 核心：每当 isPlaying 或 tick 变化，就安排"播放下一条事件"。
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying) return; // 没在播就什么都不做
     if (indexRef.current >= events.length) {
-      setIsPlaying(false);
+      setIsPlaying(false); // 播完了，停下
       return;
     }
     const event = events[indexRef.current];
+    // setTimeout：等 delayFor(event) 毫秒后，再处理这条事件
     const timer = setTimeout(() => {
-      dispatch(event);
-      indexRef.current += 1;
-      setTick((n) => n + 1); // 触发 effect 再跑一次，调度下一条
+      dispatch(event); // 把事件喂给 reducer → state 更新 → 场景重渲染
+      indexRef.current += 1; // 指针前移
+      setTick((n) => n + 1); // 改 tick → 触发本 effect 再跑一次 → 安排下一条
     }, delayFor(event));
+    // 清理函数：如果在等待期间组件卸载/重跑，取消这个定时器，避免重复触发
     return () => clearTimeout(timer);
   }, [isPlaying, tick, events]);
 
@@ -938,7 +1044,9 @@ export function useReplay(events: OfficeEvent[]) {
 }
 ```
 
-> 学习提示：这里用 `tick` 这个"计数器 state"来反复触发同一个 `useEffect` 是一个常见技巧——每播一条事件就 `setTick`，effect 依赖里有 `tick`，于是它会再次运行、安排下一条。这样就实现了"一条接一条按不同间隔播放"。
+> 💡 **这里最绕的是 `tick` 这个技巧，重点理解一下：**
+> `useEffect` 只在它的依赖（`[isPlaying, tick, events]`）变化时才重新运行。我们想"播完一条立刻安排下一条"，于是每播一条就 `setTick(+1)`——`tick` 变了，effect 就再跑一次，于是用 `setTimeout` 安排下一条。如此一条接一条，像多米诺骨牌。
+> 如果**去掉 `tick`**，effect 只在开始播放时跑一次、只播第一条，就停住了——因为没有任何东西再触发它。
 
 - [ ] **Step 2: 类型检查并提交**
 
@@ -970,7 +1078,9 @@ import OfficeScene from "./office-scene";
 import { useReplay } from "./use-replay";
 import { SAMPLE_MEETING } from "@/lib/cyber-office/sample-meeting";
 
+// 顶层组件：把"回放逻辑（hook）"和"画面（场景/按钮/总结）"组装到一起。
 export default function CyberOffice() {
+  // 从 hook 里拿到当前状态、是否在播、以及开始播放的函数
   const { state, isPlaying, start } = useReplay(SAMPLE_MEETING);
 
   return (
@@ -978,18 +1088,19 @@ export default function CyberOffice() {
       {/* 议题 + 播放控制 */}
       <div className="flex flex-col gap-4 rounded-lg border border-border bg-bg-subtle p-5">
         <p className="text-sm text-text-secondary">
+          {/* state.topic 有值就显示议题，否则显示提示语 */}
           {state.topic || "点击下方按钮，回放一场样本会议。"}
         </p>
         <button
           onClick={start}
-          disabled={isPlaying}
+          disabled={isPlaying} // 播放中禁用按钮，防止重复点击
           className="w-fit rounded-md border border-accent/25 bg-accent-subtle px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isPlaying ? "会议进行中…" : "▶ 播放样本会议"}
         </button>
       </div>
 
-      {/* 主持人当前发言 */}
+      {/* 主持人当前发言（hostText 有值才显示） */}
       {state.hostText && (
         <p className="text-center text-sm italic text-text-muted">
           主持人：{state.hostText}
@@ -999,12 +1110,13 @@ export default function CyberOffice() {
       {/* 圆桌场景 */}
       <OfficeScene state={state} />
 
-      {/* 总结产物 */}
+      {/* 总结产物（summary 有值才显示） */}
       {state.summary && (
         <div className="rounded-lg border border-border bg-bg-subtle p-5">
           <h3 className="mb-3 font-mono text-sm uppercase tracking-widest text-text-muted">
             Summary
           </h3>
+          {/* pre 保留换行；whitespace-pre-wrap 让长行也能自动折行 */}
           <pre className="whitespace-pre-wrap font-sans text-sm leading-[1.7] text-text-secondary">
             {state.summary}
           </pre>
@@ -1043,6 +1155,8 @@ export default function CyberOfficePage() {
   );
 }
 ```
+
+> 注意：路由页是**服务端组件**（没有 `"use client"`），它只负责静态外壳；真正带状态的交互都在 `<CyberOffice/>` 这个客户端组件里。这是 Next.js App Router 的常见分层。
 
 - [ ] **Step 3: 浏览器验证完整回放**
 

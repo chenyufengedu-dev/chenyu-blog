@@ -61,9 +61,11 @@ vitest.config.ts      # 测试配置（新增）
 
 Run:
 ```bash
-npm install -D vitest
+npm install -D vitest@2
 ```
-Expected: 安装成功，`package.json` 的 devDependencies 出现 `vitest`。
+Expected: 安装成功，`package.json` 的 devDependencies 出现 `vitest`（2.x 版本）。
+
+> ⚠️ **为什么锁 v2**：最新的 vitest 4 依赖 Node 20.12+ 的新 API（`styleText`），本机 Node 是 20.11，会报 `does not provide an export named 'styleText'` 启动错误。vitest 2 在当前 Node 上能跑，测试写法完全一样。（将来若把 Node 升级到 20.19+/22 LTS，可再升回最新 vitest。）
 
 - [ ] **Step 2: 创建 Vitest 配置**
 

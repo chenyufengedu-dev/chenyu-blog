@@ -4,6 +4,7 @@ import type { MeetingState } from "@/lib/cyber-office/types";
 import { computeSeatPositions } from "@/lib/cyber-office/seats";
 import { getRole } from "@/lib/cyber-office/roles";
 import Character from "./character";
+import SpeechBubble from "./speech-bubble";
 
 const SCENE = 340; // 场景边长（正方形）
 const CENTER = SCENE / 2; // 圆心坐标（场景正中，170）
@@ -50,14 +51,18 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
             // 把小人的中心对准座位点：左上角 = 座位坐标 - 小人尺寸一半
             style={{ left: seat.x - CHAR / 2, top: seat.y - CHAR / 2 }}
           >
-            <Character
-              name={role.name}
-              color={role.color}
-              // ?. 和 ?? 双保险：runtime 万一不存在，就当 idle，避免崩溃
-              // runtime?.status 的意思是，引擎在尝试访问 .status 之前，会先看看前面的 runtime 是否存在（是否为 null 或 undefined）。
-              // A ?? B 的逻辑非常严苛。它会检查左边的 A。当且仅当左边是 null 或者 undefined 时，它才会无可奈何地使用右边的备用值 B。其他任何值（即使是空字符串 ""、数字 0 这种通常被认为是假的值），它都会坚持使用左边。
-              status={runtime?.status ?? "idle"}
-            />
+            {/* relative 让气泡能相对这个小人定位（气泡内部是 absolute bottom-full） */}
+            <div className="relative">
+              <SpeechBubble text={runtime?.bubble ?? ""} />
+              <Character
+                name={role.name}
+                color={role.color}
+                // ?. 和 ?? 双保险：runtime 万一不存在，就当 idle，避免崩溃
+                // runtime?.status 的意思是，引擎在尝试访问 .status 之前，会先看看前面的 runtime 是否存在（是否为 null 或 undefined）。
+                // A ?? B 的逻辑非常严苛。它会检查左边的 A。当且仅当左边是 null 或者 undefined 时，它才会无可奈何地使用右边的备用值 B。其他任何值（即使是空字符串 ""、数字 0 这种通常被认为是假的值），它都会坚持使用左边。
+                status={runtime?.status ?? "idle"}
+              />
+            </div>
           </div>
         );
       })}

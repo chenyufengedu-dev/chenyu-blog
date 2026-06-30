@@ -40,6 +40,7 @@ export function useReplay(events: OfficeEvent[]) {
 
   // start：从头开始播放。useCallback 让这个函数引用稳定，避免不必要的重建。
   const start = useCallback(() => {
+    dispatch({ type: "reset" });
     indexRef.current = 0;
     setTick(0);
     setIsPlaying(true);

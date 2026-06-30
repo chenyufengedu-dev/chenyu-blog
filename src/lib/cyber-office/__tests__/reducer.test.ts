@@ -59,4 +59,18 @@ describe("applyEvent", () => {
     expect(s.summary).toBe("## 大纲");
     expect(s.phase).toBe("ended");
   });
+
+  it("reset 会回到空白初始状态", () => {
+    let s = applyEvent(createInitialState(), {
+      type: "meeting_start",
+      topic: "旧议题",
+      participants: ["host", "pm"],
+    });
+    s = applyEvent(s, { type: "host_speak", text: "旧主持人台词" });
+    s = applyEvent(s, { type: "summary", outline: "旧总结" });
+
+    const reset = applyEvent(s, { type: "reset" });
+
+    expect(reset).toEqual(createInitialState());
+  });
 });

@@ -25,6 +25,7 @@ export interface Role {
 // 💡 新手提示：这同样是联合类型，但每个分支是一个对象。它们都有 type 字段，
 //    靠 type 区分是哪种事件——这叫"可辨识联合"，后面 reducer 里 switch(type) 就靠它。
 export type OfficeEvent =
+  | { type: "reset" }
   | { type: "meeting_start"; topic: string; participants: RoleId[] }
   | { type: "host_speak"; text: string } // 主持人开场/串场
   | { type: "call_on"; speaker: RoleId } // 点名 → 小人举手

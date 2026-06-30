@@ -42,6 +42,9 @@ export function applyEvent(
   event: OfficeEvent,
 ): MeetingState {
   switch (event.type) {
+    case "reset":
+      return createInitialState();
+
     case "meeting_start": {
       // 为每个参会者建一条初始 runtime（都 idle、气泡为空）
       const roles: Record<string, RoleRuntime> = {};

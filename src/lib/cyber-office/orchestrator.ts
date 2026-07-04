@@ -8,6 +8,7 @@ import {
   buildSummarySystemPrompt,
   buildSummaryUserPrompt,
 } from "./prompts";
+import type { ModeratorDecision, TranscriptTurn } from "./prompts";
 
 // 运行时再准备一份 Set，是为了校验模型返回的 speaker 字符串是否真的是合法角色。
 const roleIds = new Set<RoleId>([
@@ -38,7 +39,12 @@ export function parseModeratorDecision(
   participants: RoleId[],
 ): ModeratorDecision {
   // JSON.parse 后 TypeScript 还不知道里面有什么字段，所以先当成 Partial 再逐项检查。
-  const value = extractJsonObject(text) as Partial<ModeratorDecision>;
+  const value = extractJsonObject(text) as {
+    action?: unknown;
+    speaker?: unknown;
+    prompt?: unknown;
+    hostText?: unknown;
+  };
 
   if (value.action !== "call_on" && value.action !== "summarize") {
     throw new Error("Invalid moderator action");
@@ -59,19 +65,27 @@ export function parseModeratorDecision(
     };
   }
 
-  if (!value.speaker || !roleIds.has(value.speaker)) {
+  if (
+    typeof value.speaker !== "string" ||
+    !roleIds.has(value.speaker as RoleId)
+  ) {
     throw new Error("Invalid moderator speaker");
   }
 
-  if (!participants.includes(value.speaker) || value.speaker === "host") {
+  const speaker = value.speaker as RoleId;
+
+  if (!participants.includes(speaker) || speaker === "host") {
     // 主持人不能点一个没参会的人，也不能点自己。
     throw new Error("Invalid moderator speaker");
   }
 
   return {
     action: "call_on",
-    speaker: value.speaker,
-    prompt: value.prompt?.trim() || "请从你的角色视角补充。",
+    speaker,
+    prompt:
+      typeof value.prompt === "string" && value.prompt.trim()
+        ? value.prompt.trim()
+        : "请从你的角色视角补充。",
     hostText: value.hostText.trim(),
   };
 }

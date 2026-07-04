@@ -49,16 +49,20 @@ export function useReplay(events: OfficeEvent[]) {
   // 核心：每当 isPlaying 或 tick 变化，就安排"播放下一条事件"。
   useEffect(() => {
     if (!isPlaying) return; // 没在播就什么都不做
-    if (indexRef.current >= events.length) {
-      setIsPlaying(false); // 播完了，停下
-      return;
-    }
+    if (indexRef.current >= events.length) return;
+
     const event = events[indexRef.current];
     // setTimeout：等 delayFor(event) 毫秒后，再处理这条事件
     const timer = setTimeout(() => {
       dispatch(event); // 把事件喂给 reducer → state 更新 → 场景重渲染
-      indexRef.current += 1; // 指针前移
-      setTick((n) => n + 1); // 改 tick → 触发本 effect 再跑一次 → 安排下一条
+      const nextIndex = indexRef.current + 1;
+      indexRef.current = nextIndex; // 指针前移
+
+      if (nextIndex >= events.length) {
+        setIsPlaying(false); // 播完了，停下
+      } else {
+        setTick((n) => n + 1); // 改 tick → 触发本 effect 再跑一次 → 安排下一条
+      }
     }, delayFor(event));
     // 清理函数：如果在等待期间组件卸载/重跑，取消这个定时器，避免重复触发
     return () => clearTimeout(timer);

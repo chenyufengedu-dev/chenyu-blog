@@ -1,4 +1,3 @@
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type { ChatModel } from "@/lib/cyber-office/orchestrator";
 import { runMeeting } from "@/lib/cyber-office/orchestrator";
 import { describe, it, expect } from "vitest";
@@ -10,13 +9,13 @@ class FakeModel implements ChatModel {
     "## 核心结论\n这是一场测试总结。",
   ];
 
-  async complete(_messages: ChatCompletionMessageParam[]) {
+  async complete() {
     const next = this.completions.shift();
     if (!next) throw new Error("No fake completion left");
     return next;
   }
 
-  async *stream(_messages: ChatCompletionMessageParam[]) {
+  async *stream() {
     yield "空间图";
     yield "需要";
     yield "讲清楚。";

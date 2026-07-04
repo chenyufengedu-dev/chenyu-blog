@@ -1,7 +1,5 @@
 import type { OfficeEvent } from "./types";
 
-import type { OfficeEvent } from "./types";
-
 export function encodeSseEvent(event: OfficeEvent): string {
   // SSE 规定每条消息用空行结尾；data: 后面放我们真正要传的 JSON。
   return `data: ${JSON.stringify(event)}\n\n`;

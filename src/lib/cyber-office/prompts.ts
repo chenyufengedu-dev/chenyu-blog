@@ -7,13 +7,19 @@ export interface TranscriptTurn {
   text: string;
 }
 
-export interface ModeratorDecision {
-  // call_on = 继续点名某个角色；summarize = 讨论够了，进入总结。
-  action: "call_on" | "summarize";
-  speaker?: RoleId;
-  prompt?: string;
-  hostText: string;
-}
+export type ModeratorDecision =
+  | {
+      // call_on = 继续点名某个角色；这个分支必须有 speaker。
+      action: "call_on";
+      speaker: RoleId;
+      prompt: string;
+      hostText: string;
+    }
+  | {
+      // summarize = 讨论够了，进入总结；这个分支不需要 speaker。
+      action: "summarize";
+      hostText: string;
+    };
 
 export function buildModeratorSystemPrompt(participants: RoleId[]): string {
   // 把参会角色转成文字名单，让主持人知道它只能点名这些人。

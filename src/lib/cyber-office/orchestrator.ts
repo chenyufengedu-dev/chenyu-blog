@@ -1,6 +1,13 @@
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type { OfficeEvent, RoleId } from "./types";
-import type { ModeratorDecision, TranscriptTurn } from "./prompts";
+import {
+  buildModeratorSystemPrompt,
+  buildModeratorUserPrompt,
+  buildRoleSystemPrompt,
+  buildRoleUserPrompt,
+  buildSummarySystemPrompt,
+  buildSummaryUserPrompt,
+} from "./prompts";
 
 // 运行时再准备一份 Set，是为了校验模型返回的 speaker 字符串是否真的是合法角色。
 const roleIds = new Set<RoleId>([
@@ -82,9 +89,66 @@ export interface RunMeetingOptions {
   model: ChatModel;
   maxTurns?: number;
 }
+//function*（带有星号的 function）用来声明一个生成器函数: 可以暂停执行并随时恢复。它可以在执行过程中通过 yield 关键字，分批次地、多次地“吐出”（返回）多个值。
+export async function* runMeeting({
+  topic,
+  participants,
+  model,
+  maxTurns = 6,
+}: RunMeetingOptions): AsyncGenerator<OfficeEvent> {
+  // transcript 是服务端会议记录，只存角色发言；主持人每轮会参考它来决定下一步。
+  const transcript: TranscriptTurn[] = [];
 
-export async function* runMeeting(
-  _options: RunMeetingOptions,
-): AsyncGenerator<OfficeEvent> {
-  throw new Error("runMeeting is implemented in the next task");
+  // 第一个事件负责初始化前端状态：议题、参会者、小人列表。
+  yield { type: "meeting_start", topic, participants };
+
+  for (let turn = 0; turn < maxTurns; turn++) {
+    // 1. 先问主持人：根据议题和已有讨论，下一步点谁，还是进入总结？
+    const moderatorText = await model.complete([
+      { role: "system", content: buildModeratorSystemPrompt(participants) },
+      { role: "user", content: buildModeratorUserPrompt(topic, transcript) },
+    ]);
+
+    const decision = parseModeratorDecision(moderatorText, participants);
+    // host_speak 只更新页面上的主持人台词，不属于某个小人的气泡。
+    yield { type: "host_speak", text: decision.hostText };
+
+    if (decision.action === "summarize") {
+      break;
+    }
+
+    const speaker = decision.speaker;
+    // 2. 点名事件先让小人举手，再进入 speaking 状态。
+    yield { type: "call_on", speaker };
+    yield { type: "speaking_start", speaker };
+
+    let fullText = "";
+    // 这次角色发言的 prompt = 角色身份 + 会议历史 + 主持人的具体点名要求。
+    const roleMessages: ChatCompletionMessageParam[] = [
+      { role: "system", content: buildRoleSystemPrompt(speaker) },
+      {
+        role: "user",
+        content: buildRoleUserPrompt(topic, transcript, decision.prompt || ""),
+      },
+    ];
+
+    // 3. 模型每吐出一段 delta，就立刻 yield 一个 token 事件给前端。
+    for await (const delta of model.stream(roleMessages)) {
+      fullText += delta;
+      yield { type: "token", speaker, delta };
+    }
+
+    // fullText 用来保存完整发言，下一轮主持人和其他角色要读它。
+    transcript.push({ speaker, text: fullText });
+    yield { type: "speaking_end", speaker };
+  }
+
+  // 4. 循环结束后，不管是主持人主动总结还是达到 maxTurns，都进入总结 Agent。
+  const summary = await model.complete([
+    { role: "system", content: buildSummarySystemPrompt() },
+    { role: "user", content: buildSummaryUserPrompt(topic, transcript) },
+  ]);
+
+  yield { type: "summary", outline: summary };
+  yield { type: "meeting_end" };
 }

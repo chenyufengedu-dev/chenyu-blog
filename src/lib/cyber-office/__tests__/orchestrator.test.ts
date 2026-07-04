@@ -1,37 +1,54 @@
-import { describe, expect, it } from "vitest";
-import { parseModeratorDecision } from "@/lib/cyber-office/orchestrator";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import type { ChatModel } from "@/lib/cyber-office/orchestrator";
+import { runMeeting } from "@/lib/cyber-office/orchestrator";
+import { describe, it, expect } from "vitest";
 
-describe("parseModeratorDecision", () => {
-  it("解析 call_on 决策", () => {
-    const decision = parseModeratorDecision(
-      '{"action":"call_on","speaker":"bio","prompt":"请讲科学问题","hostText":"先请生信研究员说说。"}',
-      ["host", "pm", "bio"],
-    );
+class FakeModel implements ChatModel {
+  private completions = [
+    '{"action":"call_on","speaker":"bio","prompt":"请讲科学问题","hostText":"先请生信研究员说说。"}',
+    '{"action":"summarize","hostText":"讨论足够了，进入总结。"}',
+    "## 核心结论\n这是一场测试总结。",
+  ];
 
-    expect(decision).toEqual({
-      action: "call_on",
-      speaker: "bio",
-      prompt: "请讲科学问题",
-      hostText: "先请生信研究员说说。",
+  async complete(_messages: ChatCompletionMessageParam[]) {
+    const next = this.completions.shift();
+    if (!next) throw new Error("No fake completion left");
+    return next;
+  }
+
+  async *stream(_messages: ChatCompletionMessageParam[]) {
+    yield "空间图";
+    yield "需要";
+    yield "讲清楚。";
+  }
+}
+
+describe("runMeeting", () => {
+  it("产出完整会议事件流", async () => {
+    const events = [];
+
+    for await (const event of runMeeting({
+      topic: "讨论空间转录组可视化文章",
+      participants: ["host", "bio"],
+      model: new FakeModel(),
+      maxTurns: 3,
+    })) {
+      events.push(event);
+    }
+
+    expect(events[0]).toEqual({
+      type: "meeting_start",
+      topic: "讨论空间转录组可视化文章",
+      participants: ["host", "bio"],
     });
-  });
-
-  it("解析 summarize 决策", () => {
-    const decision = parseModeratorDecision(
-      '{"action":"summarize","hostText":"进入总结。"}',
-      ["host", "pm", "bio"],
-    );
-
-    expect(decision.action).toBe("summarize");
-    expect(decision.hostText).toBe("进入总结。");
-  });
-
-  it("拒绝不存在的 speaker", () => {
-    expect(() =>
-      parseModeratorDecision(
-        '{"action":"call_on","speaker":"frontend","prompt":"请说","hostText":"请前端说。"}',
-        ["host", "pm", "bio"],
-      ),
-    ).toThrow("Invalid moderator speaker");
+    expect(events).toContainEqual({ type: "call_on", speaker: "bio" });
+    expect(events).toContainEqual({ type: "speaking_start", speaker: "bio" });
+    expect(events).toContainEqual({
+      type: "token",
+      speaker: "bio",
+      delta: "空间图",
+    });
+    expect(events).toContainEqual({ type: "speaking_end", speaker: "bio" });
+    expect(events.at(-1)).toEqual({ type: "meeting_end" });
   });
 });

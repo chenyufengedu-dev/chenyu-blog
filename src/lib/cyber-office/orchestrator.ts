@@ -9,6 +9,7 @@ import {
   buildSummaryUserPrompt,
 } from "./prompts";
 import type { ModeratorDecision, TranscriptTurn } from "./prompts";
+import { LIVE_MEETING_LIMITS } from "./limits";
 
 // 运行时再准备一份 Set，是为了校验模型返回的 speaker 字符串是否真的是合法角色。
 const roleIds = new Set<RoleId>([
@@ -92,9 +93,12 @@ export function parseModeratorDecision(
 
 export interface ChatModel {
   // complete 用于主持人决策和最终总结：一次性拿完整文本。
-  complete(messages: ChatCompletionMessageParam[]): Promise<string>;
+  complete(
+    messages: ChatCompletionMessageParam[],
+    options?: { maxTokens?: number },
+  ): Promise<string>;
   // stream 用于角色发言：边生成边吐 token，前端气泡才能逐字出现。
-  stream(messages: ChatCompletionMessageParam[]): AsyncGenerator<string>;
+  stream(messages: ChatCompletionMessageParam[]): AsyncIterable<string>;
 }
 
 export interface RunMeetingOptions {
@@ -158,10 +162,13 @@ export async function* runMeeting({
   }
 
   // 4. 循环结束后，不管是主持人主动总结还是达到 maxTurns，都进入总结 Agent。
-  const summary = await model.complete([
-    { role: "system", content: buildSummarySystemPrompt() },
-    { role: "user", content: buildSummaryUserPrompt(topic, transcript) },
-  ]);
+  const summary = await model.complete(
+    [
+      { role: "system", content: buildSummarySystemPrompt() },
+      { role: "user", content: buildSummaryUserPrompt(topic, transcript) },
+    ],
+    { maxTokens: LIVE_MEETING_LIMITS.summaryMaxTokens },
+  );
 
   yield { type: "summary", outline: summary };
   yield { type: "meeting_end" };

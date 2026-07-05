@@ -2,6 +2,7 @@ import "server-only";
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type { ChatModel } from "./orchestrator";
+import { LIVE_MEETING_LIMITS } from "./limits";
 
 // 所有 DeepSeek 调用都集中在这个文件，避免 API Key 和 SDK 细节散落到别处。
 export const DEEPSEEK_MODEL =
@@ -25,13 +26,17 @@ export function createDeepSeekChatModel(): ChatModel {
   const client = createDeepSeekClient();
 
   return {
-    async complete(messages: ChatCompletionMessageParam[]) {
+    async complete(
+      messages: ChatCompletionMessageParam[],
+      options?: { maxTokens?: number },
+    ) {
       // complete 用在“主持人决策”和“最终总结”，所以不需要 stream。
       const response = await client.chat.completions.create({
         model: DEEPSEEK_MODEL,
         messages,
         temperature: 0.4,
-        max_tokens: 600,
+        max_tokens:
+          options?.maxTokens ?? LIVE_MEETING_LIMITS.moderatorMaxTokens,
       });
 
       // SDK 返回 choices 数组；P2 只取第一个候选答案。
@@ -44,7 +49,7 @@ export function createDeepSeekChatModel(): ChatModel {
         model: DEEPSEEK_MODEL,
         messages,
         temperature: 0.5,
-        max_tokens: 220,
+        max_tokens: LIVE_MEETING_LIMITS.roleMaxTokens,
         stream: true,
       });
 

@@ -10,9 +10,9 @@ class FakeModel implements ChatModel {
   ];
 
   async complete() {
-    const next = this.completions.shift();
-    if (!next) throw new Error("No fake completion left");
-    return next;
+    const value = this.completions.shift();
+    if (!value) throw new Error("No fake complete response");
+    return value;
   }
 
   async *stream() {

@@ -1,6 +1,9 @@
 import { createDeepSeekChatModel } from "@/lib/cyber-office/deepseek-client";
+import { toPublicLiveMeetingError } from "@/lib/cyber-office/live-errors";
+import { LIVE_MEETING_LIMITS } from "@/lib/cyber-office/limits";
 import { parseRunMeetingRequest } from "@/lib/cyber-office/live-schema";
 import { runMeeting } from "@/lib/cyber-office/orchestrator";
+import { guardLiveMeetingRequest } from "@/lib/cyber-office/rate-limit";
 import { encodeSseEvent } from "@/lib/cyber-office/sse";
 import type { OfficeEvent } from "@/lib/cyber-office/types";
 
@@ -26,6 +29,19 @@ export async function POST(request: Request) {
   if (!parsed.ok) {
     return Response.json({ message: parsed.message }, { status: 400 });
   }
+
+  const guard = await guardLiveMeetingRequest(request);
+
+  if (!guard.allowed) {
+    const body = {
+      code: guard.error.code,
+      message: guard.error.message,
+      retryAfter: guard.error.retryAfter,
+    };
+
+    return Response.json(body, { status: guard.error.status });
+  }
+
   //  ReadableStream是现代浏览器和 Node.js 系统自带的底层 API（属于 Web Streams API 标准）
   const stream = new ReadableStream({
     //async start(controller)= start: async function(controller)
@@ -39,16 +55,19 @@ export async function POST(request: Request) {
           topic: parsed.data.topic,
           participants: parsed.data.participants,
           model,
-          maxTurns: 6,
+          maxTurns: LIVE_MEETING_LIMITS.maxTurns,
         })) {
           streamEvent(controller, event);
         }
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "DeepSeek meeting failed";
+        const publicError = toPublicLiveMeetingError(error);
 
-        // 即使后端出错，也尽量用 OfficeEvent 的 error 事件告诉前端，而不是直接断流。
-        streamEvent(controller, { type: "error", message });
+        // 服务端可以记录原始错误；前端只接收脱敏后的 OfficeEvent。
+        console.error("[cyber-office] live meeting failed", error);
+        streamEvent(controller, {
+          type: "error",
+          message: publicError.message,
+        });
       } finally {
         // close 告诉浏览器：这场会议的 SSE 流结束了。
         controller.close();

@@ -20,7 +20,12 @@ export function parseSseChunk(chunk: string): OfficeEvent[] {
 
     // 这里断言成 OfficeEvent，是因为 JSON.parse 运行时只能返回 unknown/object；
     // 真正的事件形状由后端 encodeSseEvent 保证。
-    events.push(JSON.parse(json) as OfficeEvent);
+    try {
+      events.push(JSON.parse(json) as OfficeEvent);
+    } catch {
+      // 网络或代理偶尔可能切出一行坏数据。跳过坏行，让后续合法事件继续驱动画面。
+      continue;
+    }
   }
 
   return events;

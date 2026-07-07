@@ -24,4 +24,15 @@ describe("SSE helpers", () => {
     // 容错处理：隔离控制信号与脏数据, 验证解析器在遇到非业务数据（如 : keep-alive\n\n）时的鲁棒性。
     expect(parseSseChunk(chunk)).toEqual([{ type: "meeting_end" }]);
   });
+
+  it("跳过无法解析的 data 行", () => {
+    const chunk = [
+      "data: {bad json}",
+      "",
+      'data: {"type":"meeting_end"}',
+      "",
+    ].join("\n");
+
+    expect(parseSseChunk(chunk)).toEqual([{ type: "meeting_end" }]);
+  });
 });

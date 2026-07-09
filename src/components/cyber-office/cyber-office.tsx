@@ -60,6 +60,7 @@ export default function CyberOffice() {
   const state = mode === "live" ? live.state : replay.state;
   // 任意一种会议正在跑时，都禁用按钮，避免两个流同时改 UI。
   const busy = replay.isPlaying || live.isRunning;
+  const canRunReplay = !replay.isPlaying;
   const canRunLive = topic.trim().length >= 6 && !busy;
 
   const helperText = useMemo(() => {
@@ -90,10 +91,11 @@ export default function CyberOffice() {
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => {
+              live.cancel();
               setMode("replay");
               replay.start();
             }}
-            disabled={busy}
+            disabled={!canRunReplay}
             className="rounded-md border border-accent/25 bg-accent-subtle px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {replay.isPlaying ? "回放中…" : "播放样本会议"}
@@ -109,6 +111,15 @@ export default function CyberOffice() {
           >
             {live.isRunning ? "实时会议进行中…" : "实时运行 DeepSeek 会议"}
           </button>
+
+          {live.isRunning && (
+            <button
+              onClick={live.cancel}
+              className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
+            >
+              停止实时会议
+            </button>
+          )}
         </div>
       </div>
 

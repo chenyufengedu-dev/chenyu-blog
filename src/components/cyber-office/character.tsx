@@ -15,17 +15,25 @@ export default function Character({ name, color, status }: CharacterProps) {
   const isActive = status === "speaking" || status === "raising_hand";
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      {/* 外层：举手时整体轻微上移，做出"起身"的感觉 */}
+    <div className="flex flex-col items-center gap-2">
+      {/* 外层：举手时整体上移 */}
       <div
         className="relative transition-transform duration-300"
         style={{
           transform: status === "raising_hand" ? "translateY(-6px)" : "none",
         }}
       >
-        <PixelCharacter color={color} status={status} />
+        {/* 发言时脚下一抹橙色微光，强化"当前发言者" */}
+        {status === "speaking" && (
+          <span className="pointer-events-none absolute -bottom-1 left-1/2 h-1.5 w-8 -translate-x-1/2 rounded-full bg-accent/25 blur-[1px]" />
+        )}
 
-        {/* 思考省略号：仅在 thinking 状态显示 */}
+        {/* 内层：呼吸/说话动画。发言用 pixel-talk，其余用 pixel-idle */}
+        <div className={status === "speaking" ? "pixel-talk" : "pixel-idle"}>
+          <PixelCharacter color={color} status={status} />
+        </div>
+
+        {/* 思考省略号 */}
         {status === "thinking" && (
           <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-sm text-text-muted">
             …

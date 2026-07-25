@@ -55,6 +55,7 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
             <div className="relative">
               <SpeechBubble text={runtime?.bubble ?? ""} />
               <Character
+                id={id}
                 name={role.name}
                 color={role.color}
                 // ?. 和 ?? 双保险：runtime 万一不存在，就当 idle，避免崩溃

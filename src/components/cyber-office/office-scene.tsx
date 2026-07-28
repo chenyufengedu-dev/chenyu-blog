@@ -29,14 +29,19 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
       style={{ width: SCENE, height: SCENE }}
     >
       {/* 中央圆桌：一个绝对定位、居中的圆 */}
+      {/* 木质圆桌：椭圆桌面 + 桌沿厚度 + 顶部高光 */}
       <div
-        className="absolute rounded-full border border-border bg-background"
+        className="absolute rounded-full"
         style={{
-          width: RADIUS * 1.1,
-          height: RADIUS * 1.1,
-          // 让圆桌正好居中：左上角 = 圆心 - 自身一半
-          left: CENTER - (RADIUS * 1.1) / 2,
-          top: CENTER - (RADIUS * 1.1) / 2,
+          width: RADIUS * 1.5,
+          height: RADIUS * 0.95, // 压扁成椭圆，做出俯视透视
+          left: CENTER - (RADIUS * 1.5) / 2,
+          top: CENTER - (RADIUS * 0.95) / 2,
+          background: "#b98a52", // 木色
+          boxShadow:
+            "inset 0 -6px 0 #8f6538, inset 0 5px 0 #c9a06a, 0 4px 0 #6f4f2a", // 桌沿暗边 + 顶部高光 + 底部厚度
+          imageRendering: "pixelated",
+          zIndex: 1,
         }}
       />
 

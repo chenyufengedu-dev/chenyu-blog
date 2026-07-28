@@ -10,6 +10,8 @@ const SCENE = 340; // 场景边长（正方形）
 const CENTER = SCENE / 2; // 圆心坐标（场景正中，170）
 const RADIUS = 120; // 座位环半径
 const CHAR = 44; // 小人方块尺寸，用于把小人"中心"对准座位点
+const CHAR_W = 48; // 像素角色宽（12 格 × 4）
+const CHAR_H = 56; // 像素角色高（14 格 × 4）
 
 // 只负责"把 state 画出来"，不含任何逻辑——纯展示。
 export default function OfficeScene({ state }: { state: MeetingState }) {
@@ -48,8 +50,11 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
           <div
             key={id}
             className="absolute"
-            // 把小人的中心对准座位点：左上角 = 座位坐标 - 小人尺寸一半
-            style={{ left: seat.x - CHAR / 2, top: seat.y - CHAR / 2 }}
+            style={{
+              left: seat.x - CHAR_W / 2,
+              top: seat.y - CHAR_H * 0.72, // 让"脚"落在座位点，而不是几何中心
+              zIndex: Math.round(seat.y), // 越靠下层级越高 → 盖住后排
+            }}
           >
             {/* relative 让气泡能相对这个小人定位（气泡内部是 absolute bottom-full） */}
             <div className="relative">

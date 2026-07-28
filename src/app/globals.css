@@ -225,4 +225,19 @@
   .pixel-talk {
     animation: pixel-talk 0.32s ease-in-out infinite;
   }
+
+  /* 小猫被点击时蹦一下 */
+  @keyframes cat-hop {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    35% {
+      transform: translateY(-6px);
+    }
+  }
+
+  .cat-hop {
+    animation: cat-hop 0.4s ease;
+  }
 }

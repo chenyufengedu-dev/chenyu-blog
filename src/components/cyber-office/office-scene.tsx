@@ -5,6 +5,7 @@ import { computeSeatPositions } from "@/lib/cyber-office/seats";
 import { getRole } from "@/lib/cyber-office/roles";
 import Character from "./character";
 import SpeechBubble from "./speech-bubble";
+import Cat from "./cat";
 
 const SCENE = 340; // 场景边长（正方形）
 const CENTER = SCENE / 2; // 圆心坐标（场景正中，170）
@@ -28,7 +29,6 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
       className="relative mx-auto rounded-lg border border-border bg-bg-subtle"
       style={{ width: SCENE, height: SCENE }}
     >
-      {/* 中央圆桌：一个绝对定位、居中的圆 */}
       {/* 木质圆桌：椭圆桌面 + 桌沿厚度 + 顶部高光 */}
       <div
         className="absolute rounded-full"
@@ -44,6 +44,14 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
           zIndex: 1,
         }}
       />
+
+      {/* 桌上的小猫，zIndex 高于桌子、低于前排小人 */}
+      <div
+        className="absolute"
+        style={{ left: CENTER - 20, top: CENTER - 30, zIndex: 20 }}
+      >
+        <Cat />
+      </div>
 
       {/* 一圈小人：遍历参会者，每个按座位坐标绝对定位 */}
       {/* .map() 把数组里每一项变成一个 JSX 元素；key 帮 React 区分谁是谁 */}

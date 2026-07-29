@@ -6,6 +6,7 @@ import { useReplay } from "./use-replay";
 import { useLiveMeeting } from "./use-live-meeting";
 import { SAMPLE_MEETING } from "@/lib/cyber-office/sample-meeting";
 import type { MeetingState, RoleId } from "@/lib/cyber-office/types";
+import { getRole } from "@/lib/cyber-office/roles";
 
 // P2 先固定参会角色；P5 再做用户自定义角色。
 const LIVE_PARTICIPANTS: RoleId[] = [
@@ -124,7 +125,19 @@ export default function CyberOffice() {
       </div>
 
       <HostLine state={state} />
-      <OfficeScene state={state} />
+
+      {/* 发言字幕：完整显示当前发言者的话，不再挤在头顶 */}
+      {state.activeSpeaker && state.roles[state.activeSpeaker]?.bubble && (
+        <div className="rounded-lg border border-border bg-bg-subtle px-5 py-4">
+          <p className="mb-1.5 text-xs font-medium text-accent">
+            {getRole(state.activeSpeaker).name}
+          </p>
+          <p className="text-sm leading-[1.7] text-text-secondary">
+            {state.roles[state.activeSpeaker].bubble}
+          </p>
+        </div>
+      )}
+
       <SummaryPanel summary={state.summary} />
     </div>
   );

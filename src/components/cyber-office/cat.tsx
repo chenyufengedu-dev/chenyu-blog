@@ -1,44 +1,27 @@
 "use client";
 
 import { useRef, useState } from "react";
-import PixelSprite from "./pixel-sprite";
-import type { PixelMap } from "@/lib/cyber-office/character-atlas";
 
-// 一只坐着的橘猫（10×8 起步版，之后可精修）
-const CAT_LAYER: PixelMap = {
-  palette: {
-    c: "#e8a24a", // 身体
-    f: "#f4c07a", // 脸/浅色
-    e: "#2a2333", // 眼睛
-    p: "#e88a94", // 鼻子（粉）
-    w: "#f8ead6", // 胸口白
-  },
-  rows: [
-    "..c....c..",
-    ".cccccccc.",
-    ".ceffffec.",
-    ".cfppppfc.",
-    ".cffffffc.",
-    "..cccccc..",
-    "..cwwwwc..",
-    "..cc..cc..",
-  ],
-};
+// 小猫在场景里的显示高度（px）
+const CAT_DISPLAY_H = 66;
 
 // 点一下随机蹦一句
 const REACTIONS = ["喵~", "呼噜呼噜~", "喵呜！", "……（打了个哈欠）"];
 
 export default function Cat() {
+  const [frame, setFrame] = useState<"sit" | "happy">("sit"); // 当前显示哪一帧
   const [reaction, setReaction] = useState<string | null>(null);
   const [hopping, setHopping] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const poke = () => {
     setReaction(REACTIONS[Math.floor(Math.random() * REACTIONS.length)]);
+    setFrame("happy"); // 切到开心抬爪帧
     setHopping(true);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       setReaction(null);
+      setFrame("sit"); // 切回平静坐姿
       setHopping(false);
     }, 1600);
   };
@@ -56,9 +39,14 @@ export default function Cat() {
           {reaction}
         </span>
       )}
-      {/* 点击时套上 cat-hop 动画类 */}
+      {/* 点击时套上 cat-hop 动画类（来自 globals.css） */}
       <span className={hopping ? "block cat-hop" : "block"}>
-        <PixelSprite layers={[CAT_LAYER]} />
+        <img
+          src={`/sprites/cat-${frame}.png`}
+          alt=""
+          style={{ height: CAT_DISPLAY_H, width: "auto", display: "block" }}
+          draggable={false}
+        />
       </span>
     </button>
   );

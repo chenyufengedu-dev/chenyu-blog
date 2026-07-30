@@ -125,6 +125,7 @@ export default function CyberOffice() {
       </div>
 
       <HostLine state={state} />
+      <OfficeScene state={state} />
 
       {/* 发言字幕：完整显示当前发言者的话，不再挤在头顶 */}
       {state.activeSpeaker && state.roles[state.activeSpeaker]?.bubble && (

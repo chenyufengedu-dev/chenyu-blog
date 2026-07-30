@@ -1,15 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-// 小猫在场景里的显示高度（px）
-const CAT_DISPLAY_H = 66;
+// 小猫在场景里的显示高度（px）——猫别抢戏，比人小一圈
+const CAT_DISPLAY_H = 44;
 
 // 点一下随机蹦一句
 const REACTIONS = ["喵~", "呼噜呼噜~", "喵呜！", "……（打了个哈欠）"];
 
 export default function Cat() {
-  const [frame, setFrame] = useState<"sit" | "happy">("sit"); // 当前显示哪一帧
+  const [frame, setFrame] = useState<"sit" | "happy" | "blink">("sit"); // 当前显示哪一帧
   const [reaction, setReaction] = useState<string | null>(null);
   const [hopping, setHopping] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -26,6 +26,16 @@ export default function Cat() {
       setHopping(false);
     }, 1600);
   };
+
+  // 平时每隔约 4 秒眨一下眼：切到 blink 一帧、160ms 后切回 sit。
+  // 用函数式更新 + 只在 sit 时眨，避免打断"被逗开心(happy)"的状态。
+  useEffect(() => {
+    const id = setInterval(() => {
+      setFrame((f) => (f === "sit" ? "blink" : f));
+      setTimeout(() => setFrame((f) => (f === "blink" ? "sit" : f)), 160);
+    }, 2600);
+    return () => clearInterval(id); // 组件卸载时清掉定时器，防止内存泄漏
+  }, []);
 
   return (
     <button

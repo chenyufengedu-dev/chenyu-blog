@@ -39,6 +39,7 @@
     "@types/rss": "^0.0.32",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
+    "pngjs": "^7.0.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^2.1.9"

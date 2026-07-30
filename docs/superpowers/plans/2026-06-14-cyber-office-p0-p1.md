@@ -57,7 +57,7 @@ vitest.config.ts      # 测试配置（新增）
 
 > Vitest 是一个测试工具：你写一段"断言"（比如"这个函数输入 4 应该返回 5 个座位"），它帮你自动验证代码对不对。后面纯逻辑的函数都会配测试，这样你改完能立刻知道有没有改坏。
 
-- [ ] **Step 1: 安装依赖**
+- [x] **Step 1: 安装依赖**
 
 Run:
 ```bash
@@ -67,7 +67,7 @@ Expected: 安装成功，`package.json` 的 devDependencies 出现 `vitest`（2.
 
 > ⚠️ **为什么锁 v2**：最新的 vitest 4 依赖 Node 20.12+ 的新 API（`styleText`），本机 Node 是 20.11，会报 `does not provide an export named 'styleText'` 启动错误。vitest 2 在当前 Node 上能跑，测试写法完全一样。（将来若把 Node 升级到 20.19+/22 LTS，可再升回最新 vitest。）
 
-- [ ] **Step 2: 创建 Vitest 配置**
+- [x] **Step 2: 创建 Vitest 配置**
 
 Create `vitest.config.ts`:
 ```ts
@@ -90,7 +90,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 3: 加 test 脚本**
+- [x] **Step 3: 加 test 脚本**
 
 Modify `package.json` 的 `"scripts"`，增加一行：
 ```json
@@ -98,7 +98,7 @@ Modify `package.json` 的 `"scripts"`，增加一行：
 ```
 （`vitest run` 表示"跑一次就退出"，而不是一直盯着文件变化。）
 
-- [ ] **Step 4: 写一个临时冒烟测试**
+- [x] **Step 4: 写一个临时冒烟测试**
 
 Create `src/lib/cyber-office/__tests__/smoke.test.ts`:
 ```ts
@@ -113,20 +113,18 @@ describe("smoke", () => {
 });
 ```
 
-- [ ] **Step 5: 运行测试确认框架可用**
+- [x] **Step 5: 运行测试确认框架可用**
 
 Run: `npm run test`
 Expected: PASS，1 passed。
 
-- [ ] **Step 6: 删除冒烟测试并提交**
+- [x] **Step 6: 删除冒烟测试并提交**
 
 Run:
 ```bash
 rm src/lib/cyber-office/__tests__/smoke.test.ts
 git add package.json package-lock.json vitest.config.ts
-git commit -m "chore: 引入 Vitest 测试框架
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "chore: 引入 Vitest 测试框架"
 ```
 
 ---
@@ -134,11 +132,12 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ### Task 2: 定义核心类型
 
 **Files:**
+
 - Create: `src/lib/cyber-office/types.ts`
 
 > 这个文件只定义"数据长什么样"，不产生任何运行代码。TypeScript 的类型像"模具"——规定每种数据必须有哪些字段、是什么类型，写错了编辑器会立刻标红。
 
-- [ ] **Step 1: 写类型定义**
+- [x] **Step 1: 写类型定义**
 
 Create `src/lib/cyber-office/types.ts`:
 ```ts
@@ -201,16 +200,14 @@ export interface MeetingState {
 }
 ```
 
-- [ ] **Step 2: 类型检查通过即提交**
+- [x] **Step 2: 类型检查通过即提交**
 
 Run: `npx tsc --noEmit`（只检查类型、不生成文件）
 Expected: 无报错。
 
 ```bash
 git add src/lib/cyber-office/types.ts
-git commit -m "feat(cyber-office): 定义事件流与会议状态类型
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "feat(cyber-office): 定义事件流与会议状态类型"
 ```
 
 ---
@@ -220,7 +217,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Files:**
 - Create: `src/lib/cyber-office/roles.ts`
 
-- [ ] **Step 1: 写角色数据**
+- [x] **Step 1: 写角色数据**
 
 Create `src/lib/cyber-office/roles.ts`:
 ```ts
@@ -247,16 +244,14 @@ export function getRole(id: RoleId): Role {
 }
 ```
 
-- [ ] **Step 2: 类型检查并提交**
+- [x] **Step 2: 类型检查并提交**
 
 Run: `npx tsc --noEmit`
 Expected: 无报错。
 
 ```bash
 git add src/lib/cyber-office/roles.ts
-git commit -m "feat(cyber-office): 新增预设角色数据
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "feat(cyber-office): 新增预设角色数据"
 ```
 
 ---
@@ -269,7 +264,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 > 这是 TDD（测试驱动）：先写测试（描述"我期望它怎么表现"），跑一次看它失败，再写实现让它变绿。好处是你一上来就把"对的标准"定下来了。
 
-- [ ] **Step 1: 先写失败的测试**
+- [x] **Step 1: 先写失败的测试**
 
 Create `src/lib/cyber-office/__tests__/seats.test.ts`:
 ```ts
@@ -300,7 +295,7 @@ describe("computeSeatPositions", () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `npm run test`
 Expected: FAIL，提示找不到 `computeSeatPositions` / 模块不存在。（这是好事，说明测试在真正检查。）
@@ -343,18 +338,16 @@ export function computeSeatPositions(
 
 > 💡 **为什么这里要懂一点三角**：圆桌座位本质是"把人均匀放在一个圆上"。`cos` 管水平、`sin` 管垂直，角度从 -90°（正上）开始转一圈。你不用会推导，记住"圆周布点 = 圆心 + 半径×(cos, sin)"这个套路即可。
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `npm run test`
 Expected: PASS，3 passed。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/lib/cyber-office/seats.ts src/lib/cyber-office/__tests__/seats.test.ts
-git commit -m "feat(cyber-office): 圆桌座位几何计算（含单测）
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "feat(cyber-office): 圆桌座位几何计算（含单测）"
 ```
 
 ---
@@ -364,7 +357,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Files:**
 - Create: `src/components/cyber-office/character.tsx`
 
-- [ ] **Step 1: 写组件**
+- [x] **Step 1: 写组件**
 
 Create `src/components/cyber-office/character.tsx`:
 ```tsx
@@ -425,16 +418,14 @@ export default function Character({ name, color, status }: CharacterProps) {
 }
 ```
 
-- [ ] **Step 2: 类型检查并提交**
+- [x] **Step 2: 类型检查并提交**
 
 Run: `npx tsc --noEmit`
 Expected: 无报错。
 
 ```bash
 git add src/components/cyber-office/character.tsx
-git commit -m "feat(cyber-office): 占位小人组件（按状态变样式）
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "feat(cyber-office): 占位小人组件（按状态变样式）"
 ```
 
 ---
@@ -445,7 +436,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Create: `src/components/cyber-office/office-scene.tsx`
 - Create: `src/app/cyber-office/page.tsx`
 
-- [ ] **Step 1: 写场景组件**
+- [x] **Step 1: 写场景组件**
 
 Create `src/components/cyber-office/office-scene.tsx`:
 ```tsx
@@ -518,7 +509,7 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
 
 > 💡 **为什么小人用 `position: absolute` 而不是 flex 排成一行**：flex 只能把元素排成行/列，而我们要把人摆在"圆周上的任意 (x, y) 点"。绝对定位 + 计算好的 `left/top` 才能精确控制每个人的位置。
 
-- [ ] **Step 2: 写路由页（先用一个临时静态 state 让场景显示出来）**
+- [x] **Step 2: 写路由页（先用一个临时静态 state 让场景显示出来）**
 
 Create `src/app/cyber-office/page.tsx`:
 ```tsx
@@ -567,18 +558,16 @@ export default function CyberOfficePage() {
 }
 ```
 
-- [ ] **Step 3: 启动 dev server 在浏览器验证**
+- [x] **Step 3: 启动 dev server 在浏览器验证**
 
 Run: `npm run dev`，浏览器打开 `http://localhost:3000/cyber-office`
 Expected: 看到一个方形场景，中央有圆桌，6 个彩色方块小人均匀围在圆桌四周，每个下面有名字，全部静止。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add src/components/cyber-office/office-scene.tsx src/app/cyber-office/page.tsx
-git commit -m "feat(cyber-office): 圆桌静态场景与路由页
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "feat(cyber-office): 圆桌静态场景与路由页"
 ```
 
 ---
@@ -588,8 +577,40 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 做完 P0，合上代码，用自己的话回答（答不上来就回去重读对应文件）：
 
 1. `computeSeatPositions` 为什么是一个**纯函数**、放在 `lib` 里而不是写在组件里？这样做对"可测试"有什么好处？（对照 `seats.test.ts` 想）
+
+   *将该逻辑抽离为纯函数的本质原因是**关注点分离**。计算座位的几何坐标是纯粹的数学映射（极坐标转笛卡尔坐标），与 React 的生命周期、状态管理或 DOM 渲染毫无关系。*
+
+   ***对可测试性的直接好处：** 正如 `seats.test.ts` 中所示，测试纯函数只需要提供确定的输入（人数、半径、圆心），即可断言确定的输出（坐标数组）。*
+
+   - ***无需 UI 依赖**：不需要引入 `jsdom` 模拟浏览器环境，也不需要挂载（mount）React 组件。*
+   - ***极高执行效率与稳定性**：纯逻辑测试在 Node 环境下瞬间跑完，不会产生由于 UI 渲染时序导致的 Flaky Tests（偶发失败测试）。*
+   - ***边界验证清晰**：可以轻易构造 0 人、1 人或极大量人数的极端输入来验证数学逻辑的健壮性。*
+
+   
+
 2. `OfficeScene` 里小人为什么用 `position: absolute` + 计算出的 `left/top` 来摆，而不是用 flex 排成一行？
+
+   *Flexbox (`display: flex`) 的底层设计是解决**一维空间**（单行或单列）的流式对齐和分配问题。*
+
+   *“围坐圆桌”是一个典型的**二维非线性布局**。要让元素精确地在圆周上按照特定角度（从 -90° 开始顺时针）均匀分布，依赖的是三角函数（Sine 和 Cosine）计算出的精确 x/y 坐标。`position: absolute` 可以让元素脱离标准文档流，直接利用计算出的 `left` 和 `top` 值在以圆桌为中心的二维直角坐标系中进行绝对落点，这是 Flexbox 无法做到的。*
+
+   
+
 3. `page.tsx` 里那个 `staticState` 是临时的——它扮演了 P1 里"真实状态"的替身。你能说出 `MeetingState` 里每个字段分别会在动画里控制什么吗？
+
+   *在单一事实来源的架构下，`MeetingState` 的每个字段都严格映射到特定的 UI 呈现或动画触发器：*
+
+   - ***`phase`** (`"idle" | "running" | "ended"`)：控制全局级 UI 交互。例如，当值为 `"running"` 时，顶部的播放按钮会被禁用，且文案切换为“会议进行中…”。*
+   - ***`topic`**：直接映射为顶部面板中显示的议题说明文字。*
+   - ***`participants`**：控制数据的**量级**。它的长度决定了圆桌被划分为几个座位（传入 `computeSeatPositions`），其内部的 RoleId 决定了场景中实例化哪些具体的角色小人。*
+   - ***`roles`**（**核心视觉驱动引擎**）：键值对存储的 `RoleRuntime` 对象直接控制单体动画：*
+     - ***`status`**：驱动小人的 CSS 变化。值为 `"raising_hand"` 时触发 `translateY(-6px)` 实现向上跳跃动作及 ✋ 图标渲染；值为 `"speaking"` 时触发橙色 `boxShadow` 高亮描边。*
+     - ***`bubble`**：作为 `SpeechBubble` 组件的数据源。在 P1 的回放中，随 `token` 事件的累加，该字段内容不断变长，直接在 UI 上呈现出气泡“逐字蹦字”的流式打字效果。*
+   - ***`hostText`**：控制场景顶部、独立于小人之外的“主持人台词”的显隐与文本更新。*
+   - ***`summary`**：作为最终输出模块的开关。当其值从 `null` 变为字符串时，页面底部将被触发渲染包含文章大纲的 Summary 结论面板。*
+   - ***`activeSpeaker` / `error`**：`activeSpeaker` 提供全局焦点追踪，`error` 预留异常状态的 UI 呈现，目前属于辅助型状态字典。*
+
+   
 
 ---
 
@@ -607,7 +628,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 > **这是 P1 最核心、也最值得吃透的文件。** "reducer"就是一个函数：给它「当前状态 + 一个事件」，它返回「新状态」。整场会议 = 从空状态开始，把一串事件一个个喂进去，状态就一步步演变。回放和将来真实 API 都只是"事件来源不同"，这个函数完全复用。
 
-- [ ] **Step 1: 先写失败的测试**
+- [x] **Step 1: 先写失败的测试**
 
 Create `src/lib/cyber-office/__tests__/reducer.test.ts`:
 ```ts
@@ -676,12 +697,12 @@ describe("applyEvent", () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run: `npm run test`
 Expected: FAIL，找不到 `reducer` 模块。
 
-- [ ] **Step 3: 实现 reducer**
+- [x] **Step 3: 实现 reducer**
 
 Create `src/lib/cyber-office/reducer.ts`:
 ```ts
@@ -799,18 +820,16 @@ export function applyEvent(
 }
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+- [x] **Step 4: 运行测试确认通过**
 
 Run: `npm run test`
 Expected: PASS，全部通过。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/lib/cyber-office/reducer.ts src/lib/cyber-office/__tests__/reducer.test.ts
-git commit -m "feat(cyber-office): 会议状态 reducer（含单测）
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "feat(cyber-office): 会议状态 reducer（含单测）"
 ```
 
 ---
@@ -820,7 +839,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Files:**
 - Create: `src/components/cyber-office/speech-bubble.tsx`
 
-- [ ] **Step 1: 写组件**
+- [x] **Step 1: 写组件**
 
 Create `src/components/cyber-office/speech-bubble.tsx`:
 ```tsx
@@ -842,16 +861,14 @@ export default function SpeechBubble({ text }: { text: string }) {
 
 > 💡 这些 Tailwind 类大多是定位：`absolute bottom-full` 把气泡顶到小人正上方，`left-1/2 -translate-x-1/2` 是经典的"水平居中"组合。看不懂具体类名没关系，知道它整体是"在小人头顶画一个带尾巴的对话框"即可。
 
-- [ ] **Step 2: 类型检查并提交**
+- [x] **Step 2: 类型检查并提交**
 
 Run: `npx tsc --noEmit`
 Expected: 无报错。
 
 ```bash
 git add src/components/cyber-office/speech-bubble.tsx
-git commit -m "feat(cyber-office): 发言气泡组件
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "feat(cyber-office): 发言气泡组件"
 ```
 
 ---
@@ -861,7 +878,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Files:**
 - Modify: `src/components/cyber-office/office-scene.tsx`
 
-- [ ] **Step 1: 在小人上方挂气泡**
+- [x] **Step 1: 在小人上方挂气泡**
 
 Modify `src/components/cyber-office/office-scene.tsx`：先在顶部 import 处加一行：
 ```tsx
@@ -887,16 +904,14 @@ import SpeechBubble from "./speech-bubble";
           </div>
 ```
 
-- [ ] **Step 2: 类型检查并提交**
+- [x] **Step 2: 类型检查并提交**
 
 Run: `npx tsc --noEmit`
 Expected: 无报错。
 
 ```bash
 git add src/components/cyber-office/office-scene.tsx
-git commit -m "feat(cyber-office): 场景中小人头顶挂发言气泡
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "feat(cyber-office): 场景中小人头顶挂发言气泡"
 ```
 
 ---
@@ -908,7 +923,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 > 这就是 P1 回放的"剧本"——一串事件，喂给 reducer 就能演一场完整会议。将来 P2 接真实 API 后，这串事件会改由后端实时生成，但前端播放逻辑完全不变。
 
-- [ ] **Step 1: 写样本事件数组**
+- [x] **Step 1: 写样本事件数组**
 
 Create `src/lib/cyber-office/sample-meeting.ts`:
 ```ts
@@ -957,16 +972,14 @@ export const SAMPLE_MEETING: OfficeEvent[] = [
 ];
 ```
 
-- [ ] **Step 2: 类型检查并提交**
+- [x] **Step 2: 类型检查并提交**
 
 Run: `npx tsc --noEmit`
 Expected: 无报错。
 
 ```bash
 git add src/lib/cyber-office/sample-meeting.ts
-git commit -m "feat(cyber-office): 写死样本会议事件流
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "feat(cyber-office): 写死样本会议事件流"
 ```
 
 ---
@@ -974,11 +987,12 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ### Task 11: 回放 hook
 
 **Files:**
+
 - Create: `src/components/cyber-office/use-replay.ts`
 
 > hook（以 `use` 开头的函数）是 React 里"把一段带状态的逻辑打包复用"的方式。这个 `useReplay` 负责：把样本事件按不同的时间间隔，一条一条喂给 reducer，从而让场景动起来。
 
-- [ ] **Step 1: 写 hook**
+- [x] **Step 1: 写 hook**
 
 Create `src/components/cyber-office/use-replay.ts`:
 ```ts
@@ -1015,6 +1029,7 @@ export function useReplay(events: OfficeEvent[]) {
 
   const [isPlaying, setIsPlaying] = useState(false); // 是否正在播放
   const indexRef = useRef(0); // 当前播到第几条事件（用 ref 存，改它不触发重渲染）
+  // 如果 tick 是 useRef 则当第一条剧本播完，React 根本不知道数据变了，组件没有重绘。于是，下方的 useEffect 永远不会被再次唤醒，你的播放器播完第一帧就彻底死机了。
   const [tick, setTick] = useState(0); // 每播一条事件 +1，专门用来"再次唤醒"下面的 effect
 
   // start：从头开始播放。useCallback 让这个函数引用稳定，避免不必要的重建。
@@ -1050,16 +1065,14 @@ export function useReplay(events: OfficeEvent[]) {
 > `useEffect` 只在它的依赖（`[isPlaying, tick, events]`）变化时才重新运行。我们想"播完一条立刻安排下一条"，于是每播一条就 `setTick(+1)`——`tick` 变了，effect 就再跑一次，于是用 `setTimeout` 安排下一条。如此一条接一条，像多米诺骨牌。
 > 如果**去掉 `tick`**，effect 只在开始播放时跑一次、只播第一条，就停住了——因为没有任何东西再触发它。
 
-- [ ] **Step 2: 类型检查并提交**
+- [x] **Step 2: 类型检查并提交**
 
 Run: `npx tsc --noEmit`
 Expected: 无报错。
 
 ```bash
 git add src/components/cyber-office/use-replay.ts
-git commit -m "feat(cyber-office): 事件回放 hook
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "feat(cyber-office): 事件回放 hook"
 ```
 
 ---
@@ -1070,7 +1083,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Create: `src/components/cyber-office/cyber-office.tsx`
 - Modify: `src/app/cyber-office/page.tsx`
 
-- [ ] **Step 1: 写顶层客户端组件**
+- [x] **Step 1: 写顶层客户端组件**
 
 Create `src/components/cyber-office/cyber-office.tsx`:
 ```tsx
@@ -1129,7 +1142,7 @@ export default function CyberOffice() {
 }
 ```
 
-- [ ] **Step 2: 改路由页，用 CyberOffice 替换静态场景**
+- [x] **Step 2: 改路由页，用 CyberOffice 替换静态场景**
 
 Replace `src/app/cyber-office/page.tsx` 全文为：
 ```tsx
@@ -1160,10 +1173,11 @@ export default function CyberOfficePage() {
 
 > 注意：路由页是**服务端组件**（没有 `"use client"`），它只负责静态外壳；真正带状态的交互都在 `<CyberOffice/>` 这个客户端组件里。这是 Next.js App Router 的常见分层。
 
-- [ ] **Step 3: 浏览器验证完整回放**
+- [x] **Step 3: 浏览器验证完整回放**
 
 Run: `npm run dev`，打开 `http://localhost:3000/cyber-office`，点「▶ 播放样本会议」
 Expected:
+
 - 场景出现 5 个小人围坐圆桌；
 - 主持人台词在场景上方依次出现；
 - 被点名的小人冒「✋」并轻微上移，随后描边变橙、头顶气泡逐字蹦出文字；
@@ -1171,18 +1185,16 @@ Expected:
 - 最后下方出现 Summary 文章大纲；
 - 播放期间按钮显示"会议进行中…"且禁用，结束后可再次播放。
 
-- [ ] **Step 4: 跑一遍测试 + 构建确认整体没坏**
+- [x] **Step 4: 跑一遍测试 + 构建确认整体没坏**
 
 Run: `npm run test && npm run build`
 Expected: 测试全过；构建成功，路由列表里出现 `/cyber-office`。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add src/components/cyber-office/cyber-office.tsx src/app/cyber-office/page.tsx
-git commit -m "feat(cyber-office): 接入回放，完成 P1 可演示版本
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+git commit -m "feat(cyber-office): 接入回放，完成 P1 可演示版本"
 ```
 
 ---
@@ -1192,18 +1204,43 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 做完 P1，合上代码回答：
 
 1. `applyEvent` 是个**纯函数**（输入旧 state + 事件 → 输出新 state，不碰外部）。为什么这种写法让"回放"和"将来接真实 API"能共用同一套代码？（提示：API 流式返回的也是 `OfficeEvent`）
+
+   *因为 `applyEvent(state, event)` 只关心一件事：拿到一个 `OfficeEvent`，把旧状态变成新状态。它不关心这个事件来自哪里。P1 里事件来自写死的 `SAMPLE_MEETING`；P2 里事件来自后端 SSE。只要两边都输出同一种 `OfficeEvent`，前端 reducer、场景渲染、气泡动画都不用重写。*
+
+   
+
 2. `useReplay` 里为什么要用 `tick` 这个 state？如果去掉它，`useEffect` 还会一条接一条地播放吗？
+
+   *`indexRef.current` 改变不会触发 React 重新渲染，也不会重新触发 `useEffect`。`tick` 是一个专门用来“叫醒 effect”的状态：每播完一条事件就 `setTick(n => n + 1)`，effect 再跑一次，安排下一条 `setTimeout`。如果去掉 `tick`，通常只会播第一条事件，然后没人再触发下一轮调度。*
+
+   
+
 3. `token` 事件为什么要一个字一个字地发，而不是一次把整句话塞进气泡？这跟将来真实大模型的"流式输出"有什么对应关系？
+
+   *这是在模拟真实大模型的流式输出。真实 API 不会总是等完整句子生成完再一次性返回，而是边生成边吐出 token。前端每收到一个 `token` 就追加到 `bubble`，所以气泡会逐字增长。这让 P1 的回放机制和 P2 的真实 SSE 机制天然对齐。*
+
+   
+
 4. 现在导航栏还没有 Cyber Office 的入口——你知道要改哪个文件、加什么吗？（提示：回顾 `src/components/layout/navbar.tsx` 的 `navLinks`。这一步留到 P5 收尾，先想清楚。）
+
+   *改 `src/components/layout/navbar.tsx` 里的 `navLinks`，加一项类似：*
+
+   ```
+   { href: "/cyber-office", label: "Cyber Office" }
+   ```
+
+   *但按计划这一步留到 P5，因为现在 `/cyber-office` 还处于实验室建设阶段，P1/P2/P3 先把能力跑通，最后再正式放进站点导航。*
+
+   
 
 ---
 
 ## 完成标准（P0+P1）
 
-- [ ] `/cyber-office` 路由可访问，圆桌 + 小人正确渲染
-- [ ] 点击播放后完整演出一场会议（点名→举手→逐字气泡→坐下→总结）
-- [ ] `npm run test` 全部通过（seats + reducer）
-- [ ] `npm run build` 成功
-- [ ] 全程未调用任何外部 API、未消耗任何 token
+- [x] `/cyber-office` 路由可访问，圆桌 + 小人正确渲染
+- [x] 点击播放后完整演出一场会议（点名→举手→逐字气泡→坐下→总结）
+- [x] `npm run test` 全部通过（seats + reducer）
+- [x] `npm run build` 成功
+- [x] 全程未调用任何外部 API、未消耗任何 token
 
 下一份计划（P2）将把写死的 `SAMPLE_MEETING` 换成后端真实的主持人/角色/总结 Agent 编排，通过 SSE 把真实 `OfficeEvent` 流推给同一套前端。

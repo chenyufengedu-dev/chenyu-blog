@@ -136,7 +136,7 @@ export async function guardLiveMeetingRequest(
   request: Request,
 ): Promise<GuardResult> {
   const client = getRedis();
-
+  //检查有没有配置 Redis 数据库
   if (!client) {
     if (!isProductionRuntime()) return { allowed: true };
 
@@ -165,6 +165,7 @@ export async function guardLiveMeetingRequest(
     };
   }
 
+  // 全局防瘫痪
   const global = await getGlobalLimiter()?.limit("all");
 
   if (global && !global.success) {
@@ -179,6 +180,7 @@ export async function guardLiveMeetingRequest(
     };
   }
 
+  // 每日预算核销
   const daily = await consumeDailyLiveRunBudget(client);
 
   if (!daily.allowed) {

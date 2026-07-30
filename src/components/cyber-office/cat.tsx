@@ -18,6 +18,7 @@ export default function Cat() {
     setReaction(REACTIONS[Math.floor(Math.random() * REACTIONS.length)]);
     setFrame("happy"); // 切到开心抬爪帧
     setHopping(true);
+    //timer.current是盒子里唯一的真实内容物
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       setReaction(null);
@@ -41,6 +42,7 @@ export default function Cat() {
       )}
       {/* 点击时套上 cat-hop 动画类（来自 globals.css） */}
       <span className={hopping ? "block cat-hop" : "block"}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- 精灵图需按原样显示，next/image 会重编码糊掉像素 */}
         <img
           src={`/sprites/cat-${frame}.png`}
           alt=""

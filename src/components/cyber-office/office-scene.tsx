@@ -28,7 +28,6 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
         style={{
           width: SCENE,
           height: SCENE,
-          maxWidth: "100%", // 窄屏时不横向溢出（等比缩放见 Task 5）
           // 固定背景：不随网站深浅色变化
           backgroundImage: "url(/cyber-office/backdrop.png)",
           backgroundSize: "cover",
@@ -36,6 +35,7 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
         }}
       >
         {/* 现代简约白圆桌，居中略偏下 */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- 精灵图需按原样显示，next/image 会重编码糊掉像素 */}
         <img
           src="/cyber-office/table.png"
           alt=""
@@ -81,7 +81,6 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
               <Character
                 id={id}
                 name={role.name}
-                color={role.color}
                 // ?. 与 ?? 双保险：runtime 不存在就当 idle，避免崩溃
                 status={runtime?.status ?? "idle"}
               />

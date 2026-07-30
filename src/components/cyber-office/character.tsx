@@ -16,11 +16,10 @@ export const CHAR_DISPLAY_H = 112;
 interface CharacterProps {
   id: RoleId;
   name: string;
-  color: string;
   status: RoleStatus;
 }
 
-export default function Character({ id, name, color, status }: CharacterProps) {
+export default function Character({ id, name, status }: CharacterProps) {
   // 举手或发言时，名字用橙色高亮，突出“当前在场上的人”
   const isActive = status === "speaking" || status === "raising_hand";
   const pose = POSE[status];
@@ -40,6 +39,7 @@ export default function Character({ id, name, color, status }: CharacterProps) {
 
         {/* 内层：呼吸/说话动画（来自 globals.css，尊重 reduced-motion） */}
         <div className={status === "speaking" ? "pixel-talk" : "pixel-idle"}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- 精灵图需按原样显示，next/image 会重编码糊掉像素 */}
           <img
             src={`/sprites/${id}-${pose}.png`}
             alt=""

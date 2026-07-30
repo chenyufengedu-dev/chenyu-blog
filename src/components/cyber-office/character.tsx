@@ -11,7 +11,7 @@ const POSE: Record<RoleStatus, "standing" | "raising" | "sitting"> = {
 // 角色在场景里的显示高度（px）。所有精灵原生 320 高、宽度略有差异，
 // 这里统一按“高度”缩放、宽度自动，保证 6 个角色一样高、脚在同一条线。
 // office-scene 定位也用这个值，所以 export 出去共用。
-export const CHAR_DISPLAY_H = 112;
+export const CHAR_DISPLAY_H = 132;
 
 interface CharacterProps {
   id: RoleId;

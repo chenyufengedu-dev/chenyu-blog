@@ -6,22 +6,28 @@ import { getRole } from "@/lib/cyber-office/roles";
 import Character, { CHAR_DISPLAY_H } from "./character";
 import Cat from "./cat";
 
-const SCENE = 560; // 场景边长（放大自 340）
+const SCENE = 560; // 场景边长（正方形）
 const CENTER = SCENE / 2; // 视觉圆心 280
-const RADIUS = 175; // 座位环半径
-const SEAT_CY = CENTER + 15; // 座位环圆心略下移，避免顶排的头被裁掉
 
-// 只负责“把 state 画出来”，不含任何逻辑——纯展示。
+// 桌子尺寸（现代简约白圆桌）
+const TABLE_W = 280;
+const TABLE_H = TABLE_W * 0.84; // 按 table.png 原生比例（≈235）
+const TABLE_CY = 292; // 桌子中心 y，略高于场景中心，给下方留点空间
+
+// 座位不是正圆，而是「横宽竖扁」的椭圆——贴合俯视圆桌的透视，
+// 让人真正围在桌边，而不是散在一个大圆上。
+const RING_CX = CENTER; // 椭圆中心 x
+const RING_CY = 300; // 椭圆中心 y
+const RING_RX = 208; // 椭圆横半径（宽）
+const RING_RY = 116; // 椭圆纵半径（扁）
+
 export default function OfficeScene({ state }: { state: MeetingState }) {
-  // 根据参会人数算出每个座位的坐标（圆心用 SEAT_CY，比视觉中心略低）
-  const seats = computeSeatPositions(
-    state.participants.length,
-    RADIUS,
-    CENTER,
-    SEAT_CY,
-  );
+  // 只借用 computeSeatPositions 算出的角度；坐标我们自己按椭圆算，
+  // 所以半径/圆心传占位值 1,0,0 即可。
+  const seats = computeSeatPositions(state.participants.length, 1, 0, 0);
 
   return (
+    // 外层：窄屏可横向滚动，不撑破整页
     <div className="mx-auto w-fit max-w-full overflow-x-auto">
       <div
         className="relative overflow-hidden rounded-lg border border-border"
@@ -34,48 +40,58 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
           backgroundPosition: "center",
         }}
       >
-        {/* 现代简约白圆桌，居中略偏下 */}
+        {/* 薄蒙版：压一下过亮的背景，让前景角色更跳（不随主题变） */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "rgba(248,247,244,0.14)", zIndex: 0 }}
+        />
+
+        {/* 现代简约白圆桌 */}
         {/* eslint-disable-next-line @next/next/no-img-element -- 精灵图需按原样显示，next/image 会重编码糊掉像素 */}
         <img
           src="/cyber-office/table.png"
           alt=""
           className="pointer-events-none absolute"
           style={{
-            width: RADIUS * 1.7,
-            height: "auto",
-            left: CENTER - (RADIUS * 1.7) / 2,
-            top: CENTER - RADIUS * 0.5,
-            zIndex: 1,
+            width: TABLE_W,
+            height: TABLE_H,
+            left: CENTER - TABLE_W / 2,
+            top: TABLE_CY - TABLE_H / 2,
+            // 桌子层级设在前后排之间：后排(py<桌中心)画在桌后，前排画在桌前
+            zIndex: Math.round(TABLE_CY),
           }}
         />
 
-        {/* 桌上的小猫（zIndex 高于桌子） */}
+        {/* 桌上的小猫（永远在桌面之上） */}
         <div
           className="absolute"
           style={{
             left: CENTER,
-            top: CENTER - RADIUS * 0.28,
+            top: TABLE_CY - 48,
             transform: "translateX(-50%)",
-            zIndex: 6,
+            zIndex: Math.round(TABLE_CY) + 2,
           }}
         >
           <Cat />
         </div>
 
-        {/* 一圈角色：遍历参会者，按座位坐标绝对定位 */}
+        {/* 一圈角色：按椭圆座位坐标绝对定位 */}
         {state.participants.map((id, i) => {
-          const seat = seats[i]; // 第 i 个人的座位坐标
-          const runtime = state.roles[id]; // 运行时状态（状态/气泡）
-          const role = getRole(id); // 静态信息（名字/颜色）
+          const angle = seats[i].angle; // 该座位在环上的角度
+          const px = RING_CX + RING_RX * Math.cos(angle); // 椭圆横向铺开
+          const py = RING_CY + RING_RY * Math.sin(angle); // 椭圆纵向压扁
+          const runtime = state.roles[id];
+          const role = getRole(id);
           return (
             <div
               key={id}
               className="absolute"
               style={{
-                left: seat.x,
-                top: seat.y - CHAR_DISPLAY_H, // 让“脚”落在座位点
+                left: px,
+                top: py - CHAR_DISPLAY_H, // 让“脚”落在座位点
                 transform: "translateX(-50%)", // 宽度不一也水平居中
-                zIndex: Math.round(seat.y), // 越靠下越前，盖住后排
+                // 越靠下(前排)层级越高：盖住后排；也让前排在桌前、后排在桌后
+                zIndex: Math.round(py),
               }}
             >
               <Character

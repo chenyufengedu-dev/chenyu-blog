@@ -17,16 +17,30 @@ interface CharacterProps {
   id: RoleId;
   name: string;
   status: RoleStatus;
+  dimmed?: boolean; // 有人在发言、但不是我 → 压暗，突出发言者
 }
 
-export default function Character({ id, name, status }: CharacterProps) {
+export default function Character({
+  id,
+  name,
+  status,
+  dimmed,
+}: CharacterProps) {
   // 举手或发言时，名字用橙色高亮，突出“当前在场上的人”
   const isActive = status === "speaking" || status === "raising_hand";
   const pose = POSE[status];
 
   return (
     // aria-label 让读屏能报出角色名；下面 <img alt=""> 避免重复播报
-    <div className="flex flex-col items-center gap-1" aria-label={name}>
+    <div
+      className="flex flex-col items-center gap-1"
+      aria-label={name}
+      style={{
+        opacity: dimmed ? 0.45 : 1,
+        filter: dimmed ? "saturate(0.55)" : "none",
+        transition: "opacity .35s ease, filter .35s ease",
+      }}
+    >
       {/* 外层：举手/发言时整体轻微上移，做出“起身”感 */}
       <div
         className="relative transition-transform duration-300"
@@ -35,6 +49,12 @@ export default function Character({ id, name, status }: CharacterProps) {
         {/* 发言时脚下橙色微光，强化“当前发言者” */}
         {status === "speaking" && (
           <span className="pointer-events-none absolute -bottom-1 left-1/2 h-1.5 w-10 -translate-x-1/2 rounded-full bg-accent/25 blur-[1px]" />
+        )}
+        {/* 说话中：头顶像素小气泡做“正在发言”指示（完整台词在下方字幕） */}
+        {status === "speaking" && (
+          <span className="absolute -top-3 left-1/2 -translate-x-1/2 border-2 border-accent bg-background px-1 text-[10px] leading-none text-accent">
+            ● ● ●
+          </span>
         )}
 
         {/* 内层：呼吸/说话动画（来自 globals.css，尊重 reduced-motion） */}

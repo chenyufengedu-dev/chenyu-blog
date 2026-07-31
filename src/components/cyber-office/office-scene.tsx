@@ -84,6 +84,9 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
                 id={id}
                 name={role.name}
                 status={runtime?.status ?? "idle"}
+                dimmed={
+                  state.activeSpeaker != null && state.activeSpeaker !== id
+                }
               />
             </div>
           );

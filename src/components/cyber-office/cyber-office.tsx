@@ -33,18 +33,37 @@ function SummaryPanel({ summary }: { summary: string | null }) {
   );
 }
 
-function HostLine({ state }: { state: MeetingState }) {
-  // error 也走 MeetingState，这样后端错误能显示在同一套 UI 里。
+function SubtitleBar({ state }: { state: MeetingState }) {
+  // 一处字幕搞定三种情况：错误 / 当前发言者 / 主持人串场
+  let speaker = "";
+  let text = "";
+  let accent = false; // 发言者/错误用橙色名，主持人串场用灰色名
+
   if (state.error) {
-    return <p className="text-center text-sm text-accent">{state.error}</p>;
+    speaker = "系统";
+    text = state.error;
+    accent = true;
+  } else if (state.activeSpeaker && state.roles[state.activeSpeaker]?.bubble) {
+    speaker = getRole(state.activeSpeaker).name;
+    text = state.roles[state.activeSpeaker].bubble;
+    accent = true;
+  } else if (state.hostText) {
+    speaker = getRole("host").name;
+    text = state.hostText;
   }
 
-  if (!state.hostText) return null;
+  if (!text) return null; // 没内容就不占位
 
   return (
-    <p className="text-center text-sm italic text-text-muted">
-      主持人：{state.hostText}
-    </p>
+    <div className="border-2 border-border bg-bg-subtle px-5 py-4">
+      <p
+        className="mb-1.5 text-xs font-medium"
+        style={{ color: accent ? "#ea580c" : "var(--text-muted)" }}
+      >
+        {speaker}
+      </p>
+      <p className="text-sm leading-[1.7] text-text-secondary">{text}</p>
+    </div>
   );
 }
 
@@ -124,20 +143,8 @@ export default function CyberOffice() {
         </div>
       </div>
 
-      <HostLine state={state} />
       <OfficeScene state={state} />
-
-      {/* 发言字幕：完整显示当前发言者的话，不再挤在头顶 */}
-      {state.activeSpeaker && state.roles[state.activeSpeaker]?.bubble && (
-        <div className="rounded-lg border border-border bg-bg-subtle px-5 py-4">
-          <p className="mb-1.5 text-xs font-medium text-accent">
-            {getRole(state.activeSpeaker).name}
-          </p>
-          <p className="text-sm leading-[1.7] text-text-secondary">
-            {state.roles[state.activeSpeaker].bubble}
-          </p>
-        </div>
-      )}
+      <SubtitleBar state={state} />
 
       <SummaryPanel summary={state.summary} />
     </div>

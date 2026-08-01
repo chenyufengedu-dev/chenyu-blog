@@ -44,7 +44,19 @@ const near = (i) => {
   return Math.sqrt(dr * dr + dg * dg + db * db) < TOL;
 };
 
-// —— 2) 从四边泛洪，把连通背景 alpha 置 0 —— //
+// —— 2) 去背景 —— //
+// 绿幕模式：若四角是绿色，直接全局键出绿色（最干净：无灰边、无残留投影）。
+const bgIsGreen = bg > br + 25 && bg > bb + 25;
+if (bgIsGreen) {
+  for (let p = 0; p < W * H; p++) {
+    const i = p << 2;
+    if (data[i + 1] > data[i] + 25 && data[i + 1] > data[i + 2] + 25) {
+      data[i + 3] = 0; // 绿 → 透明
+    }
+  }
+}
+
+// 灰底/纯色底：再从四边泛洪兜底（绿幕模式下基本无事可做）。
 const cleared = new Uint8Array(W * H); // 1 = 已作为背景清除
 const stack = [];
 const pushIf = (x, y) => {
@@ -78,10 +90,30 @@ for (let x = 0; x < W; x++) {
     start = -1;
   }
 }
+// 帧数对不上（常见：某帧伸出手臂跨过间隙，把相邻两帧连成一块）→
+// 退化为"按内容总宽等分 N 份"切分，一般也能切对。
+let finalSpans = spans;
 if (spans.length !== POSES.length) {
-  console.error(`⚠️ 期望切出 ${POSES.length} 帧，实际 ${spans.length} 帧。可能背景没删干净或帧粘连。`);
-  console.error(`   spans=${JSON.stringify(spans)} —— 试着调 TOL，或确认三人有明显间隔。`);
-  process.exit(2);
+  let lo = -1,
+    hi = -1;
+  for (let x = 0; x < W; x++) {
+    if (colHasInk[x]) {
+      if (lo < 0) lo = x;
+      hi = x;
+    }
+  }
+  if (lo < 0) {
+    console.error("整张无内容，检查绿幕/背景");
+    process.exit(2);
+  }
+  const step = (hi - lo + 1) / POSES.length;
+  finalSpans = POSES.map((_, k) => [
+    Math.round(lo + k * step),
+    Math.round(lo + (k + 1) * step) - 1,
+  ]);
+  console.warn(
+    `⚠️ 检测到 ${spans.length} 帧≠${POSES.length}，帧可能粘连，改用等分 ${POSES.length} 份切分。`,
+  );
 }
 
 // 每个人物的内容包围盒（含上下边界，用于底部对齐）
@@ -97,7 +129,7 @@ function bbox([x0, x1]) {
   }
   return { top, bot, left, right };
 }
-const boxes = spans.map(bbox);
+const boxes = finalSpans.map(bbox);
 
 // 统一画布：宽=最宽人物、高=最高人物（+一点余量），底部对齐
 const maxW = Math.max(...boxes.map((b) => b.right - b.left + 1));

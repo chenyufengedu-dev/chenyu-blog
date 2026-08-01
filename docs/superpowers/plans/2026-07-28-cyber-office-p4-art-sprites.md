@@ -437,11 +437,12 @@ git commit -m "feat(cyber-office): 发言改用下方字幕面板"
 ### Task 5: 窄屏舞台不溢出
 
 **Files:**
+
 - Modify: `src/components/cyber-office/office-scene.tsx`
 
 > 舞台固定 560px，手机上会撑破页面。最稳的兜底：外面包一层容器，窄屏时让舞台可横向滚动查看，不影响整页布局。（真正的“整体等比缩小”体验属于增强项，留到以后，别在这卡住。）
 
-- [ ] **Step 1: 给舞台包一层滚动容器**
+- [x] **Step 1: 给舞台包一层滚动容器**
 
 Modify `src/components/cyber-office/office-scene.tsx`，把 `return (` 里那个带 `backgroundImage` 的舞台 `<div>`（连同它所有子元素）整块用一层容器包起来。即把：
 
@@ -478,16 +479,16 @@ Modify `src/components/cyber-office/office-scene.tsx`，把 `return (` 里那个
   );
 ```
 
-- [ ] **Step 2: 浏览器验证窄屏**
+- [x] **Step 2: 浏览器验证窄屏**
 
 Run: `npm run dev`，用浏览器开发者工具切到手机宽度看 `/cyber-office`。
 Expected: 舞台不撑破页面（窄屏可横向滚动），桌面宽度下正常居中。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add src/components/cyber-office/office-scene.tsx
-git commit -m "feat(cyber-office): 窄屏舞台不溢出"
+git commit -m "feat(cyber-office): 窄屏舞台不溢出T"
 ```
 
 ---
@@ -502,13 +503,13 @@ git commit -m "feat(cyber-office): 窄屏舞台不溢出"
 
 > 角色/猫改用 `<img>` 后，canvas 渲染器、PixelMap 图谱、SVG 版小人、头顶气泡都没人引用了。删掉保持代码干净。
 
-- [ ] **Step 1: 删除文件**
+- [x] **Step 1: 删除文件**
 
 ```bash
 git rm src/components/cyber-office/pixel-character.tsx src/components/cyber-office/pixel-sprite.tsx src/components/cyber-office/speech-bubble.tsx src/lib/cyber-office/character-atlas.ts
 ```
 
-- [ ] **Step 2: 类型检查 + lint（确认没有残留引用）**
+- [x] **Step 2: 类型检查 + lint（确认没有残留引用）**
 
 Run:
 
@@ -519,7 +520,7 @@ npm run lint
 
 Expected: 全绿。若报“找不到模块/未使用引用”，按提示删掉对应 import。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git commit -m "chore(cyber-office): 删除精灵图接入后不再使用的旧渲染代码"
@@ -532,7 +533,7 @@ git commit -m "chore(cyber-office): 删除精灵图接入后不再使用的旧�
 **Files:**
 - No code changes unless previous tasks fail.
 
-- [ ] **Step 1: 全量校验**
+- [x] **Step 1: 全量校验**
 
 Run:
 
@@ -545,7 +546,7 @@ npm run build
 
 Expected: 全部通过，路由列表仍含 `/cyber-office`。
 
-- [ ] **Step 2: 浏览器验证**
+- [x] **Step 2: 浏览器验证**
 
 Run: `npm run dev`，打开 `http://localhost:3000/cyber-office`，点「播放样本会议」。
 Expected:
@@ -557,7 +558,7 @@ Expected:
 - 背景是会议室，切换网站深/浅色时 office **不变**；
 - 系统开启“减少动态效果”后刷新，呼吸/抖动/猫蹦**静止**。
 
-- [ ] **Step 3: 收尾**
+- [x] **Step 3: 收尾**
 
 Step 1–2 全过则无需额外提交（前面每步已提交）。若某项不对，回到对应 Task 修正后重跑本 Task。
 
@@ -570,24 +571,46 @@ Step 1–2 全过则无需额外提交（前面每步已提交）。若某项不
 做完 P4-ART，合上代码回答：
 
 1. 为什么 `Character` 的对外接口 `{id, name, color, status}` 从 P4.1 到现在一直没变，只换内部实现？这体现了什么设计原则？
+
+   *体现**开闭原则 / 关注点分离**：`OfficeScene` 和事件流只依赖 `{id,name,status}`，渲染方式从"代码画"升级到"精灵图"时它们一行都不用改；也方便将来再换实现（换素材/换回代码）都不波及上层。*
+
+   
+
 2. 为什么 6 个角色精灵在代码里统一按“高度”缩放（`height` 固定、`width: auto`），而不是按宽度？如果按固定宽度会出什么问题？
+
+    *6 张精灵原生都是 320 高、但宽度各不同。固定**高度**、宽度自动，能保证所有角色**一样高、脚在同一水平线**，围坐才整齐。若固定**宽度**，因每张宽不同，等比后**高度就会参差**，角色忽高忽矮、脚线对不齐。*
+
+   
+
 3. 定位角色时为什么用 `top: seat.y - CHAR_DISPLAY_H`（脚落座位点）而不是几何中心？`zIndex: Math.round(seat.y)` 又解决了什么？
+
+   ***`top: seat.y - CHAR_DISPLAY_H`** 让**脚**落在座位点（而非几何中心），这样不同姿势/身高的角色都"站/坐"在座位上、不悬空。**`zIndex: Math.round(py)`** 让越靠下（前排）层级越高，**盖住后排**，形成近大远小的前后遮挡。*
+
+   
+
 4. 发言为什么从“头顶气泡”改成“下方字幕面板”？（想想轮流发言、可读性、气泡重叠）
+
+   **头顶气泡→下方字幕** → 轮流发言同一刻只一人说；气泡挤头顶会**重叠、盖桌子、截断看不全**；下方固定字幕面板**完整可读、位置稳定**，也更像"字幕"
+
+   
+
 5. 精灵图丢失了“深浅色自适应”，为什么本项目可以接受？（提示：舞台固定背景 + 已确认的产品决策）
+
+   **精灵图丢深浅色自适应却可接受** → 因为舞台**自带固定背景**、且产品上已决定 office 内部不随网站主题变色。角色固定配色正好和固定背景匹配，无需自适应。
 
 ---
 
 ## 完成标准
 
-- [ ] 圆桌角色为手绘精灵图，坐/举手/起身随 status 切换，切换不跳
-- [ ] idle 呼吸、举手上移、发言抖动+橙光、思考省略号均正常
-- [ ] 现代简约白桌 + 固定会议室背景，切换网站深浅色 office 不变
-- [ ] 桌上小猫点击切到开心帧 + 蹦 + 冒气泡
-- [ ] 发言走下方字幕面板，无头顶气泡重叠
-- [ ] `prefers-reduced-motion` 开启时所有循环动画静止
-- [ ] 窄屏舞台不横向溢出
-- [ ] 旧渲染文件（pixel-character/pixel-sprite/speech-bubble/character-atlas）已删除
-- [ ] `npm run test`、`npx tsc --noEmit`、`npm run lint`、`npm run build` 全部通过
+- [x] 圆桌角色为手绘精灵图，坐/举手/起身随 status 切换，切换不跳
+- [x] idle 呼吸、举手上移、发言抖动+橙光、思考省略号均正常
+- [x] 现代简约白桌 + 固定会议室背景，切换网站深浅色 office 不变
+- [x] 桌上小猫点击切到开心帧 + 蹦 + 冒气泡
+- [x] 发言走下方字幕面板，无头顶气泡重叠
+- [x] `prefers-reduced-motion` 开启时所有循环动画静止
+- [x] 窄屏舞台不横向溢出
+- [x] 旧渲染文件（pixel-character/pixel-sprite/speech-bubble/character-atlas）已删除
+- [x] `npm run test`、`npx tsc --noEmit`、`npm run lint`、`npm run build` 全部通过
 
 > 下一阶段 P5：轻量自定义角色（改名 + 一句话人设）、总结导出 Markdown、导航栏加入口、构建历史时间轴。
 

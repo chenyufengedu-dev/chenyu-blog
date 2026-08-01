@@ -51,7 +51,8 @@ cozy pixel art illustration, soft shading, muted neutral palette, subtle outline
 Multiple poses of the SAME single character in one image, evenly spaced left-to-right on a SOLID pure chroma-key green background (#00b140) with NO ground shadow, ALL poses at the SAME size and the SAME head size, standing on the same ground line, each pose INCLUDING the SAME office chair:
 pose 1 (listening) sitting on the office chair, <听朝向>;
 pose 2 (raising hand) sitting, raising ONE hand above the head, <听朝向>;
-pose 3 (speaking) standing up STRAIGHT IN PLACE with the empty chair DIRECTLY BEHIND the character (do NOT step aside, do NOT move sideways), FACING THE VIEWER, the SAME body width and SAME head size as pose 1, mouth open, <发言手势>;
+pose 3 (speaking, mouth CLOSED) standing up STRAIGHT IN PLACE with the empty chair DIRECTLY BEHIND the character (do NOT step aside, do NOT move sideways), FACING THE VIEWER, the SAME body width and SAME head size as pose 1, mouth closed, <发言手势>;
+pose 4 (speaking, mouth OPEN) EXACTLY the same standing pose and position as pose 3 but with the MOUTH OPEN as if talking (only the mouth differs), <发言手势>;
 Character: <角色描述>. Keep face/hair/clothes/colors and the chair identical across all poses. cozy pixel art illustration, soft shading, muted neutral palette, subtle outline, consistent lighting, no photo realism, no text. No text.
 ```
 - `<听朝向>`：host `facing viewer`；pm `three-quarter front turned right`；frontend `three-quarter front turned left`；bio `three-quarter back view seen from behind, turned right`；reviewer `three-quarter back view seen from behind, turned left`。
@@ -67,7 +68,7 @@ A modern round office meeting table, 3/4 top-down view, matte light-gray top wit
 ## 流水线
 
 1. 每角色出一张多帧大图 → 存 `public/sprites/_src/<id>-poses.png`。
-2. 跑 `node scripts/split-poses.mjs public/sprites/_src/<id>-poses.png <id> 320 sitting,raising,standing[,talking2,turning]` 切齐去底。
+2. 跑 `node scripts/split-poses.mjs public/sprites/_src/<id>-poses.png <id> 340 sitting,raising,standing,talking` 切齐去底（4 帧）。
 3. 桌子无椅版 → `node scripts/cutout.mjs public/sprites/_src/table.png public/cyber-office/table.png 300`。
 4. 总设计师按座位把角色摆到桌子四周（含近大远小、前后遮挡、发言转正面接线）。
 

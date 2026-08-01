@@ -1,6 +1,9 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { RoleId, RoleStatus } from "@/lib/cyber-office/types";
 
-// 每种状态显示哪张姿势精灵：闲置/思考=坐，被点名=举手，发言=起身。
+// 非发言状态用哪张图。发言时在 standing(闭嘴)/talking(张嘴) 间循环，单独处理。
 const POSE: Record<RoleStatus, "standing" | "raising" | "sitting"> = {
   idle: "sitting",
   thinking: "sitting",
@@ -30,7 +33,20 @@ export default function Character({
 }: CharacterProps) {
   // 举手或发言时，名字用橙色高亮，突出“当前在场上的人”
   const isActive = status === "speaking" || status === "raising_hand";
-  const pose = POSE[status];
+
+  // 发言时嘴型循环：standing(闭)↔talking(开)，做出"在说话"的动效。
+  const [mouthOpen, setMouthOpen] = useState(false);
+  useEffect(() => {
+    if (status !== "speaking") return;
+    // 尊重"减少动态效果"：开启时不循环（静态一帧即可）
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = setInterval(() => setMouthOpen((m) => !m), 180);
+    return () => clearInterval(timer);
+  }, [status]);
+
+  // 非发言时 mouthOpen 无所谓，pose 直接取 POSE[status]
+  const pose =
+    status === "speaking" ? (mouthOpen ? "talking" : "standing") : POSE[status];
 
   return (
     // aria-label 让读屏能报出角色名；下面 <img alt=""> 避免重复播报
@@ -55,8 +71,8 @@ export default function Character({
           <span className="pointer-events-none absolute -bottom-1 left-1/2 h-1.5 w-10 -translate-x-1/2 rounded-full bg-accent/25 blur-[1px]" />
         )}
 
-        {/* 内层：呼吸/说话动画（来自 globals.css，尊重 reduced-motion） */}
-        <div className={status === "speaking" ? "pixel-talk" : "pixel-idle"}>
+        {/* 内层：温和呼吸浮动；说话感由嘴型循环表达，不再用快速抖动 */}
+        <div className="pixel-idle">
           {/* eslint-disable-next-line @next/next/no-img-element -- 精灵图需按原样显示，next/image 会重编码糊掉像素 */}
           <img
             src={`/sprites/${id}-${pose}.png`}

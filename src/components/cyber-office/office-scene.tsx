@@ -11,8 +11,8 @@ const SCENE_W = 760;
 const SCENE_H = 480;
 
 // 无椅圆桌（553×300）作为中心；椅子在各角色精灵里，桌子不再带椅
-const TABLE_W = 330; // 桌子加大，桌沿更能盖住远侧角色下半身
-const TABLE_H = Math.round((TABLE_W * 300) / 553); // ≈179
+const TABLE_W = 310; // 收窄一点，侧边不挤到近侧角色
+const TABLE_H = Math.round((TABLE_W * 300) / 553); // ≈168
 const TABLE_CX = SCENE_W / 2; // 380
 const TABLE_CY = 335;
 const TABLE_LEFT = TABLE_CX - TABLE_W / 2;
@@ -24,8 +24,8 @@ const SEATS: { x: number; y: number }[] = [
   { x: 380, y: 284 }, // 远侧中（桌头）—— host（下移贴桌）
   { x: 236, y: 320 }, // 远侧左 —— pm（往里贴桌沿）
   { x: 524, y: 320 }, // 远侧右 —— frontend
-  { x: 240, y: 420 }, // 近侧左 —— bio
-  { x: 520, y: 420 }, // 近侧右 —— reviewer
+  { x: 226, y: 432 }, // 近侧左 —— bio
+  { x: 534, y: 432 }, // 近侧右 —— reviewer
   { x: 380, y: 450 }, // 近侧中 —— recorder（第 6 人）
 ];
 
@@ -116,6 +116,11 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
           const k = seatScale(seat.y);
           const runtime = state.roles[id];
           const role = getRole(id);
+          // 近侧角色(i>=3)一旦站起来发言，就整个人提到"前桌沿"之上，避免被桌沿横切穿模；
+          // 坐着时仍在桌沿之下（膝盖被前桌沿盖住）。
+          const isNear = i >= 3;
+          const standingSpeak = runtime?.status === "speaking";
+          const z = isNear && standingSpeak ? 500 : Math.round(seat.y);
           return (
             <div
               key={id}
@@ -125,7 +130,7 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
                 top: seat.y - CHAR_DISPLAY_H,
                 transform: `translateX(-50%) scale(${k})`,
                 transformOrigin: "bottom center",
-                zIndex: Math.round(seat.y),
+                zIndex: z,
               }}
             >
               <Character
@@ -140,6 +145,23 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
             </div>
           );
         })}
+
+        {/* 桌子"前桌沿"再叠一层在近侧角色之上：盖住近侧两人的膝盖，露出上半身。
+            用 clipPath 只显示桌子图的下半部分（前沿），position/size 与桌子完全一致。 */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- 精灵图需按原样显示 */}
+        <img
+          src="/cyber-office/table.png"
+          alt=""
+          className="pointer-events-none absolute"
+          style={{
+            width: TABLE_W,
+            height: TABLE_H,
+            left: TABLE_LEFT,
+            top: TABLE_TOP,
+            clipPath: "inset(62% 0 0 0)", // 只保留下 38%（前桌沿只盖膝盖，不切到肩膀）
+            zIndex: 430, // 高于近侧角色，盖住其膝盖
+          }}
+        />
 
         {/* 名字：独立顶层，永远可见。远侧(前3人)放头顶上方(脚下会被桌子挡)，近侧放脚下 */}
         {participants.map((id, i) => {

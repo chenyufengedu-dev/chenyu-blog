@@ -45,17 +45,23 @@ cozy pixel art illustration, soft shading, muted neutral palette, subtle outline
 > ⚠️ **背景必须用绿幕**：角色/桌子一律画在 `SOLID pure chroma-key green background (#00b140), NO shadow on the ground` 上——灰底和白大褂/灰椅太像，抠不干净会留灰边和投影；绿幕才能一键抠净。
 > ⚠️ **尺寸必须统一**：同一张图里 `all poses at the SAME size, the SAME head size, standing on the same ground line`；不同角色也尽量同样大（否则拼进场景头有大有小）。
 > 脚本 `split-poses.mjs` 已内置绿幕识别：四角是绿色时自动键出绿色。
+> ⚠️ **7 帧之间必须留明显间隔**：帧与帧之间要有**清晰的整条绿色空隙**，每帧的手臂/道具**不要越到隔壁帧**——否则切图器分不出边界，会把内容切到隔壁。prompt 里强调 `evenly spaced with clear wide green gaps between each pose, each pose fully within its own column, arms not crossing into the gaps`。
+> 脚本已做兜底（检测不到间隔时改等分硬切），但**等分会误切**，务必靠间距从源头避免。
 
-**角色（一次出一整排该角色的多帧）**：
+**角色（一次出一整排该角色的 7 帧）**：
 ```
-Multiple poses of the SAME single character in one image, evenly spaced left-to-right on a SOLID pure chroma-key green background (#00b140) with NO ground shadow, ALL poses at the SAME size and the SAME head size, standing on the same ground line, each pose INCLUDING the SAME office chair:
-pose 1 (listening) sitting on the office chair, <听朝向>;
-pose 2 (raising hand) sitting, raising ONE hand above the head, <听朝向>;
-pose 3 (speaking, mouth CLOSED) standing up STRAIGHT IN PLACE with the empty chair DIRECTLY BEHIND the character (do NOT step aside, do NOT move sideways), FACING THE VIEWER, the SAME body width and SAME head size as pose 1, mouth closed, <发言手势>;
-pose 4 (speaking, mouth OPEN) EXACTLY the same standing pose and position as pose 3 but with the MOUTH OPEN as if talking (only the mouth differs), <发言手势>;
-Character: <角色描述>. Keep face/hair/clothes/colors and the chair identical across all poses. cozy pixel art illustration, soft shading, muted neutral palette, subtle outline, consistent lighting, no photo realism, no text. No text.
+Seven poses of the SAME single character in one image, evenly spaced left-to-right on a SOLID pure chroma-key green background (#00b140) with NO ground shadow, ALL poses at the SAME size and the SAME head size, standing on the same ground line, each pose INCLUDING the SAME office chair:
+pose 1 (idle rest) sitting on the office chair calmly, <听朝向>;
+pose 2 (idle action, start) sitting, <待机动作> starting, <听朝向>;
+pose 3 (idle action, peak) sitting, <待机动作> at its peak, <听朝向>;
+pose 4 (blink) EXACTLY the same as pose 1 but with the EYES CLOSED, <听朝向>;
+pose 5 (raising hand) sitting, raising ONE hand above the head, <听朝向>;
+pose 6 (speaking, mouth CLOSED) standing up STRAIGHT IN PLACE with the empty chair DIRECTLY BEHIND (do NOT step aside, do NOT move sideways), FACING THE VIEWER, same body width and head size as pose 1, mouth closed, <发言手势>;
+pose 7 (speaking, mouth OPEN) EXACTLY the same as pose 6 but MOUTH OPEN as if talking (only the mouth differs), <发言手势>;
+Character: <角色描述>. Keep face/hair/clothes/colors and the chair identical across all poses. cozy pixel art illustration, soft shading, muted neutral palette, subtle outline, consistent lighting, no photo realism. No text.
 ```
 - `<听朝向>`：host `facing viewer`；pm `three-quarter front turned right`；frontend `three-quarter front turned left`；bio `three-quarter back view seen from behind, turned right`；reviewer `three-quarter back view seen from behind, turned left`。
+- `<待机动作>`（**个性化，赋予生命力**）：host `lifting a coffee mug toward the mouth to take a sip`；pm `looking down at a tablet and nodding`；frontend `adjusting the headphones with one hand`；bio `looking down and writing in a small notebook`；reviewer `tapping a red pen on a notebook`。
 - `<发言手势>`（差异化）：host `welcoming open-hand gesture`；pm `presenting gesture`；frontend `pointing at an imaginary screen`；bio `pushing glasses`；reviewer `holding up a red pen`。
 - `<角色描述>`：host `a female facilitator with a headset, shoulder-length brown hair, beige blazer, lanyard`；pm `a male product manager, white shirt with blue tie, short brown hair`；frontend `a male engineer in a dark gray hoodie with headphones, black hair`；bio `a female researcher, long black hair, round glasses, white lab coat over blue shirt`；reviewer `a male reviewer with glasses, dark sweater, khaki trousers`。
 
@@ -68,7 +74,7 @@ A modern round office meeting table, 3/4 top-down view, matte light-gray top wit
 ## 流水线
 
 1. 每角色出一张多帧大图 → 存 `public/sprites/_src/<id>-poses.png`。
-2. 跑 `node scripts/split-poses.mjs public/sprites/_src/<id>-poses.png <id> 340 sitting,raising,standing,talking` 切齐去底（4 帧）。
+2. 跑 `node scripts/split-poses.mjs public/sprites/_src/<id>-poses.png <id> 340 sitting,act1,act2,blink,raising,standing,talking` 切齐去底（7 帧）。
 3. 桌子无椅版 → `node scripts/cutout.mjs public/sprites/_src/table.png public/cyber-office/table.png 300`。
 4. 总设计师按座位把角色摆到桌子四周（含近大远小、前后遮挡、发言转正面接线）。
 

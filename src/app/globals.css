@@ -241,3 +241,16 @@
     animation: cat-hop 0.4s ease;
   }
 }
+
+/* Cyber Office 精灵帧交叉淡入淡出：帧切换时上一帧渐隐，柔化"换图"的硬切感 */
+@keyframes sprite-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.sprite-fade {
+  animation: sprite-fade 0.28s ease forwards;
+}

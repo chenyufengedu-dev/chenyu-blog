@@ -131,11 +131,30 @@ function bbox([x0, x1]) {
 }
 const boxes = finalSpans.map(bbox);
 
-// 统一画布：宽=最宽人物、高=最高人物（+一点余量），底部对齐
-const maxW = Math.max(...boxes.map((b) => b.right - b.left + 1));
+// 稳定点对齐：以"脚/椅子底"的水平中心为锚点，所有帧都对齐这一点。
+// 这样角色做动作（伸手/低头）时脚不动、身体不左右跳，动画才连贯。
+function anchorX(b) {
+  const band = Math.max(2, Math.round((b.bot - b.top) * 0.14)); // 底部一小条 = 脚/椅底
+  let sum = 0,
+    cnt = 0;
+  for (let y = b.bot - band; y <= b.bot; y++) {
+    for (let x = b.left; x <= b.right; x++) {
+      if (data[idx(x, y) + 3] > 16) {
+        sum += x;
+        cnt++;
+      }
+    }
+  }
+  return cnt ? sum / cnt : (b.left + b.right) / 2;
+}
+const anchors = boxes.map(anchorX);
 const maxH = Math.max(...boxes.map((b) => b.bot - b.top + 1));
 const PAD = Math.round(maxH * 0.04);
-const canvasW = maxW + PAD * 2;
+// 锚点左右两侧分别需要的最大宽度，保证任何一帧都不被裁
+const maxLeft = Math.max(...boxes.map((b, i) => anchors[i] - b.left));
+const maxRight = Math.max(...boxes.map((b, i) => b.right - anchors[i]));
+const anchorCanvasX = Math.ceil(maxLeft) + PAD;
+const canvasW = Math.ceil(maxLeft + maxRight) + PAD * 2;
 const canvasH = maxH + PAD * 2;
 
 const outDir = path.join("public", "sprites");
@@ -144,8 +163,7 @@ fs.mkdirSync(outDir, { recursive: true });
 boxes.forEach((b, i) => {
   const out = new PNG({ width: canvasW, height: canvasH });
   out.data.fill(0);
-  const cw = b.right - b.left + 1;
-  const dx = Math.round((canvasW - cw) / 2) - b.left; // 水平居中
+  const dx = Math.round(anchorCanvasX - anchors[i]); // 按脚/椅底锚点水平对齐
   const dy = canvasH - PAD - b.bot; // 底部（脚）对齐到同一基线
   for (let y = b.top; y <= b.bot; y++) {
     for (let x = b.left; x <= b.right; x++) {

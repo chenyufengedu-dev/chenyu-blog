@@ -64,7 +64,7 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
       style={{ maxWidth: SCENE_W, height: SCENE_H * scale }}
     >
       <div
-        className="relative overflow-hidden rounded-lg border border-border"
+        className="relative select-none overflow-hidden rounded-lg border border-border"
         style={{
           width: SCENE_W,
           height: SCENE_H,

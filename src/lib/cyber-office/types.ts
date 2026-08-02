@@ -13,6 +13,22 @@ export type RoleId =
 // 小人当前的动作状态，决定渲染成什么样式/动画
 export type RoleStatus = "idle" | "thinking" | "raising_hand" | "speaking";
 
+// 主持人每轮的「调度决策」。原本在 prompts.ts，现在移到这里——
+// 因为它既是编排逻辑的产物，也要作为事件 / 状态在前后端之间流动。
+export type ModeratorDecision =
+  | {
+      // call_on = 继续点名某个角色；这个分支必须有 speaker。
+      action: "call_on";
+      speaker: RoleId;
+      prompt: string; // 主持人给该角色的具体发言指令
+      hostText: string; // 主持人这轮的串场台词
+    }
+  | {
+      // summarize = 讨论够了，进入总结；不需要 speaker。
+      action: "summarize";
+      hostText: string;
+    };
+
 // 预设角色的「静态信息」（不会随会议变化的部分）
 export interface Role {
   id: RoleId;
@@ -32,6 +48,7 @@ export type OfficeEvent =
   | { type: "speaking_start"; speaker: RoleId } // 开始说 → 气泡出现并清空
   | { type: "token"; speaker: RoleId; delta: string } // 逐字追加到气泡
   | { type: "speaking_end"; speaker: RoleId } // 说完 → 坐下
+  | { type: "moderator_decision"; decision: ModeratorDecision } // 主持人本轮调度决策（编排面板展示用）
   | { type: "summary"; outline: string } // 总结产物
   | { type: "meeting_end" }
   | { type: "error"; message: string };
@@ -53,5 +70,6 @@ export interface MeetingState {
   activeSpeaker: RoleId | null; // 当前发言者；没人发言时是 null
   hostText: string; // 主持人最近一句话
   summary: string | null; // 总结产物；还没总结时是 null
+  lastDecision: ModeratorDecision | null; // 主持人最近一次调度决策；编排面板展示用
   error: string | null;
 }

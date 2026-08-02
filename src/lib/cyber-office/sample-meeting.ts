@@ -21,21 +21,70 @@ export const SAMPLE_MEETING: OfficeEvent[] = [
     topic: "讨论一个空间转录组可视化的博客选题，并产出文章大纲",
     participants: ["host", "pm", "frontend", "bio", "reviewer"],
   },
+  // ↓ 新增：主持人先做决策，再串场、点名
+  {
+    type: "moderator_decision",
+    decision: {
+      action: "call_on",
+      speaker: "bio",
+      prompt: "请从生信角度谈谈现有空间转录组可视化的痛点。",
+      hostText:
+        "今天我们来定一个空间转录组可视化的选题。先请生信研究员谈谈痛点。",
+    },
+  },
   {
     type: "host_speak",
     text: "今天我们来定一个空间转录组可视化的选题。先请生信研究员谈谈痛点。",
   },
   { type: "call_on", speaker: "bio" },
   ...speak("bio", "现有工具画的空间图太花，读者看不懂细胞分布的生物学意义。"),
+  // ↓ 新增
+  {
+    type: "moderator_decision",
+    decision: {
+      action: "call_on",
+      speaker: "frontend",
+      prompt: "从前端可视化角度提出具体改进方案。",
+      hostText: "前端来说说可视化上能怎么改进。",
+    },
+  },
   { type: "host_speak", text: "前端来说说可视化上能怎么改进。" },
   { type: "call_on", speaker: "frontend" },
   ...speak("frontend", "可以用交互式热力图叠加组织切片，hover 显示基因表达。"),
+  // ↓ 新增
+  {
+    type: "moderator_decision",
+    decision: {
+      action: "call_on",
+      speaker: "pm",
+      prompt: "从读者价值/传播角度评估这个选题。",
+      hostText: "产品经理从读者价值角度补充一下。",
+    },
+  },
   { type: "host_speak", text: "产品经理从读者价值角度补充一下。" },
   { type: "call_on", speaker: "pm" },
   ...speak("pm", "选题要落在'看懂一张空间图'，面向入门读者更有传播力。"),
+  // ↓ 新增
+  {
+    type: "moderator_decision",
+    decision: {
+      action: "call_on",
+      speaker: "reviewer",
+      prompt: "从严谨性角度挑战前面的方案。",
+      hostText: "审稿人有没有要挑刺的？",
+    },
+  },
   { type: "host_speak", text: "审稿人有没有要挑刺的？" },
   { type: "call_on", speaker: "reviewer" },
   ...speak("reviewer", "别只讲炫技，要交代数据来源和局限，否则不严谨。"),
+  // ↓ 新增：主持人决定收口
+  {
+    type: "moderator_decision",
+    decision: {
+      action: "summarize",
+      hostText: "讨论充分了，进入总结。",
+    },
+  },
   { type: "host_speak", text: "讨论充分了，进入总结。" },
   {
     type: "summary",

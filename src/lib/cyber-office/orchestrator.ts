@@ -128,6 +128,9 @@ export async function* runMeeting({
     ]);
 
     const decision = parseModeratorDecision(moderatorText, participants);
+    // 把主持人这一轮的真实决策原样发给前端，编排面板据此展示“AI 如何调度”。
+    yield { type: "moderator_decision", decision };
+
     // host_speak 只更新页面上的主持人台词，不属于某个小人的气泡。
     yield { type: "host_speak", text: decision.hostText };
 

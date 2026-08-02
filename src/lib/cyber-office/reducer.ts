@@ -10,6 +10,7 @@ export function createInitialState(): MeetingState {
     activeSpeaker: null,
     hostText: "",
     summary: null,
+    lastDecision: null,
     error: null,
   };
 }
@@ -96,6 +97,10 @@ export function applyEvent(
       return patchRole({ ...state, activeSpeaker: null }, event.speaker, {
         status: "idle",
       });
+
+    case "moderator_decision":
+      // 只记录主持人最近一次调度决策，供编排面板展示；不改任何小人动画状态。
+      return { ...state, lastDecision: event.decision };
 
     case "summary":
       // 总结产物落到 summary 字段

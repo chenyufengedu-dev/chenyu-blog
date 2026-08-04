@@ -18,6 +18,13 @@ const LIVE_PARTICIPANTS: RoleId[] = [
   "reviewer",
 ];
 
+// 示例议题：点击 chip 直接填进输入框，降低"不知道输入什么"的门槛。
+const EXAMPLE_TOPICS = [
+  "AI 对产品经理的工作有哪些实际影响？",
+  "如何建立一个高质量的数据指标体系？",
+  "空间转录组可视化，怎么让入门读者看懂？",
+];
+
 function SummaryPanel({ summary }: { summary: string | null }) {
   // summary 还没生成时不渲染面板，避免页面上出现空卡片。
   if (!summary) return null;
@@ -95,21 +102,50 @@ export default function CyberOffice() {
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4 rounded-lg border border-border bg-bg-subtle p-5">
         <label className="flex flex-col gap-2 text-sm text-text-secondary">
-          会议议题
+          你想让这支 AI 团队讨论什么问题？
           <textarea
             value={topic}
             onChange={(event) => setTopic(event.target.value)}
             disabled={busy}
             rows={3}
+            placeholder="输入你的问题，或点下方示例试试……"
             className="resize-none rounded-md border border-border bg-background px-3 py-2 text-sm leading-[1.7] text-text-primary outline-none transition-colors focus:border-accent disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
+
+        {/* 示例议题 chip：点一下填进输入框 */}
+        <div className="flex flex-wrap gap-2">
+          {EXAMPLE_TOPICS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTopic(t)}
+              disabled={busy}
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs text-text-secondary transition-colors hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {t}
+            </button>
+          ))}
+        </div>
 
         <p className="text-sm leading-[1.7] text-text-secondary">
           {helperText}
         </p>
 
         <div className="flex flex-wrap gap-3">
+          {/* 主入口：用用户自己的议题跑真实会议 */}
+          <button
+            onClick={() => {
+              setMode("live");
+              live.start(topic, LIVE_PARTICIPANTS);
+            }}
+            disabled={!canRunLive}
+            className="rounded-md border border-accent/25 bg-accent-subtle px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {live.isRunning ? "会议进行中…" : "用我的议题开始"}
+          </button>
+
+          {/* 次入口：零门槛看一场预生成的样本会议 */}
           <button
             onClick={() => {
               live.cancel();
@@ -117,20 +153,9 @@ export default function CyberOffice() {
               replay.start();
             }}
             disabled={!canRunReplay}
-            className="rounded-md border border-accent/25 bg-accent-subtle px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {replay.isPlaying ? "回放中…" : "播放样本会议"}
-          </button>
-
-          <button
-            onClick={() => {
-              setMode("live");
-              live.start(topic, LIVE_PARTICIPANTS);
-            }}
-            disabled={!canRunLive}
             className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {live.isRunning ? "实时会议进行中…" : "实时运行 DeepSeek 会议"}
+            {replay.isPlaying ? "演示回放中…" : "看一场演示"}
           </button>
 
           {live.isRunning && (
@@ -138,7 +163,7 @@ export default function CyberOffice() {
               onClick={live.cancel}
               className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
             >
-              停止实时会议
+              停止会议
             </button>
           )}
         </div>

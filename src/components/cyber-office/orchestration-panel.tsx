@@ -42,11 +42,28 @@ function Node({
   );
 }
 
+// 流程连接线：一条细线 + 末端尖角，比文字“<Arrow />”更像流程图。
+function Arrow() {
+  return (
+    <span className="flex items-center text-text-muted" aria-hidden>
+      <span className="h-px w-5 bg-border" />
+      <span className="-ml-1 text-xs">▸</span>
+    </span>
+  );
+}
+
+// 会议还没开始 / 异常结束时 state.participants 为空；用这份默认名单兜底，
+// 让流向图任何时候都显示完整的专家列，而不是塌成"主持人 → 综合输出"。
+const DEFAULT_EXPERTS: RoleId[] = ["pm", "frontend", "bio", "reviewer"];
+
 export default function OrchestrationPanel({ state }: { state: MeetingState }) {
   const [open, setOpen] = useState(true);
   const active = activeNode(state);
-  // 专家节点 = 参会者去掉主持人（动态，之后加自定义角色也自动适配）。
-  const experts = state.participants.filter((id) => id !== "host");
+  // 专家节点 = 参会者去掉主持人（动态，之后加自定义角色也自动适配）；
+  // 参会者为空时退回默认名单，保证流向图完整。
+  const participants =
+    state.participants.length > 0 ? state.participants : DEFAULT_EXPERTS;
+  const experts = participants.filter((id) => id !== "host");
 
   return (
     <div className="rounded-lg border border-border bg-bg-subtle">
@@ -68,9 +85,9 @@ export default function OrchestrationPanel({ state }: { state: MeetingState }) {
           {/* 调度流向图：当前节点高亮 */}
           <div className="flex flex-wrap items-center gap-3">
             <Node label="你的问题" active={false} />
-            <span className="text-text-muted">→</span>
+            <Arrow />
             <Node label="主持人" sub="调度分工" active={active === "host"} />
-            <span className="text-text-muted">→</span>
+            <Arrow />
             <div className="flex flex-col gap-2">
               {experts.map((id) => (
                 <Node
@@ -81,7 +98,7 @@ export default function OrchestrationPanel({ state }: { state: MeetingState }) {
                 />
               ))}
             </div>
-            <span className="text-text-muted">→</span>
+            <Arrow />
             <Node
               label="综合输出"
               sub="最佳答案"

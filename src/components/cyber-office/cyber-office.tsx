@@ -27,14 +27,43 @@ const EXAMPLE_TOPICS = [
 ];
 
 function SummaryPanel({ summary }: { summary: string | null }) {
-  // summary 还没生成时不渲染面板，避免页面上出现空卡片。
   if (!summary) return null;
+
+  // 复制到剪贴板
+  const copy = () => navigator.clipboard?.writeText(summary);
+
+  // 导出为 .md 文件：用 Blob 造一个临时下载链接，点一下即下载。
+  const exportMd = () => {
+    const blob = new Blob([summary], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "cyber-office-会议结论.md";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="rounded-lg border border-border bg-bg-subtle p-5">
-      <h3 className="mb-3 font-mono text-sm uppercase tracking-widest text-text-muted">
-        Summary
-      </h3>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="font-mono text-sm uppercase tracking-widest text-text-muted">
+          会议结论
+        </h3>
+        <div className="flex gap-2">
+          <button
+            onClick={copy}
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-xs text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
+          >
+            复制
+          </button>
+          <button
+            onClick={exportMd}
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-xs text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
+          >
+            导出 Markdown
+          </button>
+        </div>
+      </div>
       <pre className="whitespace-pre-wrap font-sans text-sm leading-[1.7] text-text-secondary">
         {summary}
       </pre>

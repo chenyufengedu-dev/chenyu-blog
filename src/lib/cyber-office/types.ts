@@ -71,5 +71,6 @@ export interface MeetingState {
   hostText: string; // 主持人最近一句话
   summary: string | null; // 总结产物；还没总结时是 null
   lastDecision: ModeratorDecision | null; // 主持人最近一次调度决策；编排面板展示用
+  transcript: { speaker: RoleId; text: string }[];
   error: string | null;
 }

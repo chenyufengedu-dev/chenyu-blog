@@ -11,6 +11,7 @@ export function createInitialState(): MeetingState {
     hostText: "",
     summary: null,
     lastDecision: null,
+    transcript: [],
     error: null,
   };
 }
@@ -92,11 +93,24 @@ export function applyEvent(
       });
     }
 
-    case "speaking_end":
-      // 说完：回到 idle，台上没人了
-      return patchRole({ ...state, activeSpeaker: null }, event.speaker, {
-        status: "idle",
-      });
+    case "speaking_end": {
+      // 这轮的完整发言就是该角色当前 bubble；说完时归档进 transcript。
+      const finished = state.roles[event.speaker]?.bubble ?? "";
+      const nextState = patchRole(
+        { ...state, activeSpeaker: null },
+        event.speaker,
+        { status: "idle" },
+      );
+      return {
+        ...nextState,
+        transcript: finished
+          ? [
+              ...nextState.transcript,
+              { speaker: event.speaker, text: finished },
+            ]
+          : nextState.transcript,
+      };
+    }
 
     case "moderator_decision":
       // 只记录主持人最近一次调度决策，供编排面板展示；不改任何小人动画状态。

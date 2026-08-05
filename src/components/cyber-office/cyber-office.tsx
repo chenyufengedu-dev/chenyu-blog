@@ -8,6 +8,7 @@ import { SAMPLE_MEETING } from "@/lib/cyber-office/sample-meeting";
 import type { MeetingState, RoleId } from "@/lib/cyber-office/types";
 import { getRole } from "@/lib/cyber-office/roles";
 import OrchestrationPanel from "./orchestration-panel";
+import TranscriptPanel from "./transcript-panel";
 
 // P2 先固定参会角色；P5 再做用户自定义角色。
 const LIVE_PARTICIPANTS: RoleId[] = [
@@ -219,7 +220,7 @@ export default function CyberOffice() {
       <SubtitleBar state={state} />
 
       <SummaryPanel summary={state.summary} />
-
+      <TranscriptPanel state={state} />
       <OrchestrationPanel state={state} />
     </div>
   );

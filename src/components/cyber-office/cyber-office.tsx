@@ -75,6 +75,32 @@ function SubtitleBar({ state }: { state: MeetingState }) {
   );
 }
 
+function StatusBar({ state }: { state: MeetingState }) {
+  // 三种阶段用不同文案；讨论中额外显示当前发言者。
+  let label = "";
+  if (state.phase === "running") {
+    const who = state.activeSpeaker
+      ? getRole(state.activeSpeaker).name
+      : "主持人";
+    label = `讨论中 · 当前：${who}`;
+  } else if (state.phase === "ended") {
+    label = state.error ? "会议中断" : "会议完成 ✓";
+  } else {
+    return null; // idle：还没开始，不占位
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-sm text-text-secondary">
+      <span
+        className={`inline-block h-2 w-2 rounded-full ${
+          state.phase === "running" ? "bg-accent" : "bg-border"
+        }`}
+      />
+      {label}
+    </div>
+  );
+}
+
 export default function CyberOffice() {
   // replay 和 live 各自管理自己的状态；mode 决定当前页面展示哪一份 state。
   const replay = useReplay(SAMPLE_MEETING);
@@ -169,6 +195,7 @@ export default function CyberOffice() {
         </div>
       </div>
 
+      <StatusBar state={state} />
       <OfficeScene state={state} />
       <SubtitleBar state={state} />
 

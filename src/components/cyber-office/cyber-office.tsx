@@ -117,6 +117,14 @@ export default function CyberOffice() {
   const canRunReplay = !replay.isPlaying;
   const canRunLive = topic.trim().length >= 6 && !busy;
 
+  // 实时模式下：请求在跑、但暂时没人发言、也没出结论 → 视为“正在思考下一步”。
+  const thinking =
+    mode === "live" &&
+    live.isRunning &&
+    !state.activeSpeaker &&
+    !state.summary &&
+    !state.error;
+
   const helperText = useMemo(() => {
     // useMemo 只是避免每次渲染都重新算这段提示文字；这里不是必须，但语义清楚。
     //useMemo: 在组件重新渲染（re-render）时，只有在特定的依赖项([mode, state.topic, topic])发生变化时，才会重新执行该计算过程
@@ -196,6 +204,17 @@ export default function CyberOffice() {
       </div>
 
       <StatusBar state={state} />
+      {thinking && (
+        <p className="text-sm text-text-muted">AI 正在思考下一步…</p>
+      )}
+      {state.error && mode === "live" && !live.isRunning && (
+        <button
+          onClick={() => live.start(topic, LIVE_PARTICIPANTS)}
+          className="self-start rounded-md border border-accent/25 bg-accent-subtle px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/15"
+        >
+          重试
+        </button>
+      )}
       <OfficeScene state={state} />
       <SubtitleBar state={state} />
 

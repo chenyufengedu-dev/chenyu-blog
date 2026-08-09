@@ -230,6 +230,17 @@ export default function CyberOffice() {
               停止会议
             </button>
           )}
+
+          {mode === "replay" && replay.isPlaying && (
+            <button
+              onClick={() =>
+                replay.isPaused ? replay.resume() : replay.pause()
+              }
+              className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
+            >
+              {replay.isPaused ? "继续" : "暂停"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -247,6 +258,14 @@ export default function CyberOffice() {
       )}
       <OfficeScene state={state} />
       <SubtitleBar state={state} />
+      {mode === "replay" && replay.isPlaying && state.activeSpeaker && (
+        <button
+          onClick={replay.skip}
+          className="self-start text-xs text-text-muted transition-colors hover:text-accent"
+        >
+          跳过打字机 ⏭
+        </button>
+      )}
 
       <SummaryPanel summary={state.summary} />
       <TranscriptPanel state={state} />

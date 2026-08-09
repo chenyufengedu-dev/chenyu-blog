@@ -11,6 +11,7 @@ export function createInitialState(): MeetingState {
     hostText: "",
     summary: null,
     lastDecision: null,
+    decisions: [],
     transcript: [],
     error: null,
   };
@@ -62,14 +63,29 @@ export function applyEvent(
       };
     }
 
-    case "host_speak":
-      // 主持人说话：只更新 hostText
-      return { ...state, hostText: event.text };
+    case "host_speak": {
+      // 主持人串场：① 更新 hostText；② 让主持人小人进入 speaking（有说话动作）；
+      // ③ 把这句归档进发言记录（之前漏了主持人）。activeSpeaker 置空 = 台上没有"被点名的角色"。
+      const withHost = patchRole(
+        { ...state, hostText: event.text, activeSpeaker: null },
+        "host",
+        { status: "speaking", bubble: event.text },
+      );
+      return {
+        ...withHost,
+        transcript: [
+          ...withHost.transcript,
+          { speaker: "host", text: event.text },
+        ],
+      };
+    }
 
     case "call_on":
-      // 点名：把当前发言者设为他，并让他举手
+      // 点名：先让主持人小人坐下（结束他的说话动作），再把被点名者设为发言者并举手。
       return patchRole(
-        { ...state, activeSpeaker: event.speaker },
+        patchRole({ ...state, activeSpeaker: event.speaker }, "host", {
+          status: "idle",
+        }),
         event.speaker,
         { status: "raising_hand" },
       );
@@ -113,15 +129,24 @@ export function applyEvent(
     }
 
     case "moderator_decision":
-      // 只记录主持人最近一次调度决策，供编排面板展示；不改任何小人动画状态。
-      return { ...state, lastDecision: event.decision };
+      // 记录本轮决策：既更新"最近一次"（现有面板用），也追加进历史（Task 14 回看用）。
+      return {
+        ...state,
+        lastDecision: event.decision,
+        decisions: [...state.decisions, event.decision],
+      };
 
     case "summary":
       // 总结产物落到 summary 字段
       return { ...state, summary: event.outline };
 
     case "meeting_end":
-      return { ...state, phase: "ended", activeSpeaker: null };
+      // 会议结束：主持人坐下，台上无人。
+      return patchRole(
+        { ...state, phase: "ended", activeSpeaker: null },
+        "host",
+        { status: "idle" },
+      );
 
     case "error":
       return { ...state, phase: "ended", error: event.message };

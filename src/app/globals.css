@@ -218,10 +218,6 @@
     }
   }
 
-  .pixel-idle {
-    animation: pixel-idle 2.4s ease-in-out infinite;
-  }
-
   .pixel-talk {
     animation: pixel-talk 0.32s ease-in-out infinite;
   }

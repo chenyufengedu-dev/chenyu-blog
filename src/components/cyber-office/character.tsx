@@ -49,17 +49,17 @@ export default function Character({
     set("sitting", 0); // 进入待机先归位坐姿
     const loop = () => {
       if (cancelled) return;
-      const wait = 3200 + Math.random() * 4000; // 隔更久才动一次，更从容
+      const wait = 5000 + Math.random() * 5000; // 隔更久才动一次，更从容
       timers.push(
         setTimeout(() => {
           if (cancelled) return;
           // 一半概率做个性化动作，一半概率只眨眼
-          const isAct = Math.random() < 0.55;
+          const isAct = Math.random() < 0.35;
           const frames = isAct
             ? ["act1", "act2", "act1", "sitting"]
             : ["blink", "sitting"];
           // 眨眼要快(闭一下就睁)，动作要慢一点、更自然
-          const step = isAct ? 320 : 130;
+          const step = isAct ? 500 : 130;
           frames.forEach((f, i) => set(f, i * step));
           timers.push(setTimeout(loop, frames.length * step + 200));
         }, wait),

@@ -9,6 +9,8 @@ import type { MeetingState, RoleId } from "@/lib/cyber-office/types";
 import { getRole } from "@/lib/cyber-office/roles";
 import OrchestrationPanel from "./orchestration-panel";
 import TranscriptPanel from "./transcript-panel";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 // P2 先固定参会角色；P5 再做用户自定义角色。
 const LIVE_PARTICIPANTS: RoleId[] = [
@@ -64,9 +66,9 @@ function SummaryPanel({ summary }: { summary: string | null }) {
           </button>
         </div>
       </div>
-      <pre className="whitespace-pre-wrap font-sans text-sm leading-[1.7] text-text-secondary">
-        {summary}
-      </pre>
+      <div className="prose prose-sm max-w-none leading-[1.7] dark:prose-invert prose-headings:font-semibold prose-a:text-accent prose-table:block prose-table:overflow-x-auto">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary}</ReactMarkdown>
+      </div>
     </div>
   );
 }

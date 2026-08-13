@@ -49,6 +49,7 @@ export type OfficeEvent =
   | { type: "token"; speaker: RoleId; delta: string } // 逐字追加到气泡
   | { type: "speaking_end"; speaker: RoleId } // 说完 → 坐下
   | { type: "moderator_decision"; decision: ModeratorDecision } // 主持人本轮调度决策（编排面板展示用）
+  | { type: "step_end"; nextTurn: number; done: boolean } // 单步接口：本轮跑完，告诉前端下一轮编号 / 是否该收口
   | { type: "summary"; outline: string } // 总结产物
   | { type: "meeting_end" }
   | { type: "error"; message: string };
@@ -69,8 +70,10 @@ export interface MeetingState {
   roles: Record<string, RoleRuntime>;
   activeSpeaker: RoleId | null; // 当前发言者；没人发言时是 null
   hostText: string; // 主持人最近一句话
+
   summary: string | null; // 总结产物；还没总结时是 null
-  lastDecision: ModeratorDecision | null; // 主持人最近一次调度决策；编排面板展示用
+  // 注：不再单独存 lastDecision——它恒等于 decisions.at(-1)，属冗余状态。
+  // 同一份信息只存一处（单一数据源），避免两者不同步。
   decisions: ModeratorDecision[]; // 主持人历次调度决策（编排面板回看用）
   transcript: { speaker: RoleId; text: string }[];
   error: string | null;

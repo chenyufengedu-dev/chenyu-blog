@@ -10,7 +10,6 @@ export function createInitialState(): MeetingState {
     activeSpeaker: null,
     hostText: "",
     summary: null,
-    lastDecision: null,
     decisions: [],
     transcript: [],
     error: null,
@@ -129,12 +128,13 @@ export function applyEvent(
     }
 
     case "moderator_decision":
-      // 记录本轮决策：既更新"最近一次"（现有面板用），也追加进历史（Task 14 回看用）。
-      return {
-        ...state,
-        lastDecision: event.decision,
-        decisions: [...state.decisions, event.decision],
-      };
+      // 追加进决策历史。“最近一次决策”直接用 decisions.at(-1) 取，不再另存一份。
+      return { ...state, decisions: [...state.decisions, event.decision] };
+
+    case "step_end":
+      // 控制类事件：只给前端的逐轮驱动循环看，不影响会议状态。
+      // 显式列出来（而不是落到 default）是为了表明"这是有意忽略的"。
+      return state;
 
     case "summary":
       // 总结产物落到 summary 字段

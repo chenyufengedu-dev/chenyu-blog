@@ -101,6 +101,98 @@ export interface ChatModel {
   stream(messages: ChatCompletionMessageParam[]): AsyncIterable<string>;
 }
 
+export interface RunOneTurnOptions {
+  topic: string;
+  participants: RoleId[];
+  model: ChatModel;
+  transcript: TranscriptTurn[]; // 已有会议历史；主持人和角色都要读它
+  turn: number; // 当前是第几轮，从 0 开始
+  maxTurns?: number;
+  decision?: ModeratorDecision; // 可选：直接指定本轮决策，跳过"问主持人"（人在回路用）
+}
+
+// 只执行「一轮」：问主持人 → 点名 → 角色发言。
+// 不含 meeting_start / summary —— 那些由调用方决定什么时候发。
+// 这样这个函数就是"给定会议历史，往前走一步"的纯粹一步，既能被整场循环复用，
+// 也能被单步接口直接调用。
+export async function* runOneTurn({
+  topic,
+  participants,
+  model,
+  transcript,
+  turn,
+  maxTurns = LIVE_MEETING_LIMITS.maxTurns,
+  decision: givenDecision,
+}: RunOneTurnOptions): AsyncGenerator<OfficeEvent> {
+  // 1. 本轮决策：调用方给了就直接用；没给就问主持人。
+  let decision: ModeratorDecision;
+  if (givenDecision) {
+    decision = givenDecision;
+  } else {
+    const moderatorText = await model.complete([
+      { role: "system", content: buildModeratorSystemPrompt(participants) },
+      { role: "user", content: buildModeratorUserPrompt(topic, transcript) },
+    ]);
+    decision = parseModeratorDecision(moderatorText, participants);
+  }
+
+  yield { type: "moderator_decision", decision };
+  yield { type: "host_speak", text: decision.hostText };
+
+  // 2. 主持人认为讨论够了 → 本轮到此为止，并告诉调用方"该总结了"。
+  if (decision.action === "summarize") {
+    yield { type: "step_end", nextTurn: turn, done: true };
+    return;
+  }
+
+  // 3. 点名 → 该角色流式发言
+  const speaker = decision.speaker;
+  yield { type: "call_on", speaker };
+  yield { type: "speaking_start", speaker };
+
+  const roleMessages: ChatCompletionMessageParam[] = [
+    { role: "system", content: buildRoleSystemPrompt(speaker) },
+    {
+      role: "user",
+      content: buildRoleUserPrompt(topic, transcript, decision.prompt || ""),
+    },
+  ];
+
+  for await (const delta of model.stream(roleMessages)) {
+    yield { type: "token", speaker, delta };
+  }
+
+  yield { type: "speaking_end", speaker };
+
+  // 4. 本轮结束。到达轮数上限就标记 done，让调用方去收口。
+  const nextTurn = turn + 1;
+  yield { type: "step_end", nextTurn, done: nextTurn >= maxTurns };
+}
+
+export interface RunSummaryOptions {
+  topic: string;
+  transcript: TranscriptTurn[];
+  model: ChatModel;
+}
+
+// 收口：读完整会议记录，产出结论。同样抽成独立函数，供整场循环和单步接口共用。
+export async function* runSummary({
+  topic,
+  transcript,
+  model,
+}: RunSummaryOptions): AsyncGenerator<OfficeEvent> {
+  const summary = await model.complete(
+    [
+      { role: "system", content: buildSummarySystemPrompt() },
+      { role: "user", content: buildSummaryUserPrompt(topic, transcript) },
+    ],
+    { maxTokens: LIVE_MEETING_LIMITS.summaryMaxTokens },
+  );
+
+  yield { type: "summary", outline: summary };
+  yield { type: "meeting_end" };
+}
+
 export interface RunMeetingOptions {
   topic: string;
   participants: RoleId[];
@@ -114,65 +206,45 @@ export async function* runMeeting({
   model,
   maxTurns = 6,
 }: RunMeetingOptions): AsyncGenerator<OfficeEvent> {
-  // transcript 是服务端会议记录，只存角色发言；主持人每轮会参考它来决定下一步。
+  // transcript 是服务端会议记录；逐轮累积，主持人和角色都靠它了解上下文。
   const transcript: TranscriptTurn[] = [];
 
-  // 第一个事件负责初始化前端状态：议题、参会者、小人列表。
   yield { type: "meeting_start", topic, participants };
 
   for (let turn = 0; turn < maxTurns; turn++) {
-    // 1. 先问主持人：根据议题和已有讨论，下一步点谁，还是进入总结？
-    const moderatorText = await model.complete([
-      { role: "system", content: buildModeratorSystemPrompt(participants) },
-      { role: "user", content: buildModeratorUserPrompt(topic, transcript) },
-    ]);
+    let pending = ""; // 本轮发言逐字攒起来，说完写进 transcript
+    let done = false;
 
-    const decision = parseModeratorDecision(moderatorText, participants);
-    // 把主持人这一轮的真实决策原样发给前端，编排面板据此展示“AI 如何调度”。
-    yield { type: "moderator_decision", decision };
+    for await (const event of runOneTurn({
+      topic,
+      participants,
+      model,
+      transcript,
+      turn,
+      maxTurns,
+    })) {
+      if (event.type === "token") {
+        pending += event.delta;
+      }
 
-    // host_speak 只更新页面上的主持人台词，不属于某个小人的气泡。
-    yield { type: "host_speak", text: decision.hostText };
+      if (event.type === "speaking_end") {
+        transcript.push({ speaker: event.speaker, text: pending });
+        pending = "";
+      }
 
-    if (decision.action === "summarize") {
-      break;
+      if (event.type === "step_end") {
+        // step_end 只服务于单步接口；整场模式自己就知道进度，
+        // 不把它推给前端，保证 /run 的事件流和改造前一模一样。
+        done = event.done;
+        continue;
+      }
+
+      yield event;
     }
 
-    const speaker = decision.speaker;
-    // 2. 点名事件先让小人举手，再进入 speaking 状态。
-    yield { type: "call_on", speaker };
-    yield { type: "speaking_start", speaker };
-
-    let fullText = "";
-    // 这次角色发言的 prompt = 角色身份 + 会议历史 + 主持人的具体点名要求。
-    const roleMessages: ChatCompletionMessageParam[] = [
-      { role: "system", content: buildRoleSystemPrompt(speaker) },
-      {
-        role: "user",
-        content: buildRoleUserPrompt(topic, transcript, decision.prompt || ""),
-      },
-    ];
-
-    // 3. 模型每吐出一段 delta，就立刻 yield 一个 token 事件给前端。
-    for await (const delta of model.stream(roleMessages)) {
-      fullText += delta;
-      yield { type: "token", speaker, delta };
-    }
-
-    // fullText 用来保存完整发言，下一轮主持人和其他角色要读它。
-    transcript.push({ speaker, text: fullText });
-    yield { type: "speaking_end", speaker };
+    if (done) break;
   }
 
-  // 4. 循环结束后，不管是主持人主动总结还是达到 maxTurns，都进入总结 Agent。
-  const summary = await model.complete(
-    [
-      { role: "system", content: buildSummarySystemPrompt() },
-      { role: "user", content: buildSummaryUserPrompt(topic, transcript) },
-    ],
-    { maxTokens: LIVE_MEETING_LIMITS.summaryMaxTokens },
-  );
-
-  yield { type: "summary", outline: summary };
-  yield { type: "meeting_end" };
+  // 循环结束（主持人主动收口，或达到轮数上限）→ 总结。
+  yield* runSummary({ topic, transcript, model });
 }

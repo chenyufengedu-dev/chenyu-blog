@@ -175,6 +175,10 @@ export async function guardLiveMeetingRequest(
   request: Request,
   scope: GuardScope = "meeting",
 ): Promise<GuardResult> {
+  // 本地开发直接放行：限流额度是给线上访客准备的，不该在自己调试时被消耗。
+  // 逐轮驱动后一场会议要发 5 次请求，按线上额度调试几轮就会把自己拦死（429）。
+  if (!isProductionRuntime()) return { allowed: true };
+
   const client = getRedis();
   //检查有没有配置 Redis 数据库
   if (!client) {

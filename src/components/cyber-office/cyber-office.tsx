@@ -163,7 +163,12 @@ export default function CyberOffice() {
   // replay 和 live 各自管理自己的状态；mode 决定当前页面展示哪一份 state。
   const replay = useReplay(SAMPLE_MEETING);
   const live = useLiveMeeting();
-  const [mode, setMode] = useState<"replay" | "live">("replay");
+  // 用户手动选择的模式。
+  const [modeChoice, setModeChoice] = useState<"replay" | "live">("replay");
+  // 实际展示的模式：只要有实时会议在跑或被暂停（包括刷新后恢复出来的那场），
+  // 页面就必然显示实时模式。用"算出来"代替在 effect 里 setState——
+  // 后者会触发级联渲染，React 19 的 lint 规则也直接禁止。
+  const mode = live.isRunning || live.isPaused ? "live" : modeChoice;
   const [topic, setTopic] = useState(
     "讨论一个空间转录组可视化的博客选题，并产出文章大纲",
   );
@@ -235,7 +240,7 @@ export default function CyberOffice() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => {
-                  setMode("live");
+                  setModeChoice("live");
                   live.start(topic, LIVE_PARTICIPANTS);
                 }}
                 disabled={!canRunLive}
@@ -247,7 +252,7 @@ export default function CyberOffice() {
               <button
                 onClick={() => {
                   live.cancel();
-                  setMode("replay");
+                  setModeChoice("replay");
                   replay.start();
                 }}
                 disabled={!canRunReplay}
@@ -299,7 +304,9 @@ export default function CyberOffice() {
           )}
           {mode === "live" && live.isPaused && !live.isRunning && (
             <p className="text-sm text-text-muted">
-              会议已暂停 · 未在调用模型。点「继续会议」接着开。
+              会议已暂停 · 未在调用模型
+          {live.state.topic ? ` · 议题：${live.state.topic}` : ""}
+          。点「继续会议」接着开。
             </p>
           )}
           {thinking && !live.isPaused && (

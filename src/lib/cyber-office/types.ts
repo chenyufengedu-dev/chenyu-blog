@@ -42,6 +42,7 @@ export interface Role {
 //    靠 type 区分是哪种事件——这叫"可辨识联合"，后面 reducer 里 switch(type) 就靠它。
 export type OfficeEvent =
   | { type: "reset" }
+  | { type: "restore"; state: MeetingState } // 仅前端使用：把存下来的会议状态整个还原回去
   | { type: "meeting_start"; topic: string; participants: RoleId[] }
   | { type: "host_speak"; text: string } // 主持人开场/串场
   | { type: "call_on"; speaker: RoleId } // 点名 → 小人举手

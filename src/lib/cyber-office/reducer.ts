@@ -47,6 +47,11 @@ export function applyEvent(
     case "reset":
       return createInitialState();
 
+    case "restore":
+      // 直接用存下来的状态覆盖当前状态。不需要重放历史事件——
+      // 因为 MeetingState 本身就是"当时画面的完整快照"。
+      return event.state;
+
     case "meeting_start": {
       // 为每个参会者建一条初始 runtime（都 idle、气泡为空）
       const roles: Record<string, RoleRuntime> = {};

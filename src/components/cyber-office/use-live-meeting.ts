@@ -5,6 +5,12 @@ import { applyEvent, createInitialState } from "@/lib/cyber-office/reducer";
 import { LIVE_MEETING_MESSAGES } from "@/lib/cyber-office/limits";
 import { parseSseChunk } from "@/lib/cyber-office/sse";
 import type { OfficeEvent, RoleId } from "@/lib/cyber-office/types";
+import {
+  clearSession,
+  loadSession,
+  saveSession,
+  type SavedProgress,
+} from "@/lib/cyber-office/session-storage";
 
 interface LiveErrorResponse {
   message?: string;
@@ -110,15 +116,6 @@ async function runStep(params: {
   return result;
 }
 
-// 会议进度：暂停后要靠它从原处接着跑，所以必须存在 ref 里跨调用存活。
-interface MeetingProgress {
-  topic: string;
-  participants: RoleId[];
-  transcript: TranscriptTurn[];
-  turn: number;
-  discussionDone: boolean; // 讨论阶段是否已结束（接下来该收口总结）
-}
-
 export function useLiveMeeting() {
   const [state, dispatch] = useReducer(
     applyEvent,
@@ -132,13 +129,15 @@ export function useLiveMeeting() {
   // 用 ref 而不是 state 存"是否暂停"：异步循环里要读到**最新**的值，
   // 而 state 在闭包里会是旧快照。isPaused 那个 state 只负责驱动按钮文案。
   const pausedRef = useRef(false);
-  const progressRef = useRef<MeetingProgress | null>(null);
+  // 会议进度：暂停/刷新后靠它从原处接着跑。类型复用 session-storage 里那份。
+  const progressRef = useRef<SavedProgress | null>(null);
 
   const cancel = useCallback(() => {
-    // 彻底终止：清空进度，之后不能再 resume。
+    // 彻底终止：清空进度和存档，之后不能再 resume。
     pausedRef.current = false;
     setIsPaused(false);
     progressRef.current = null;
+    clearSession();
     abortRef.current?.abort();
   }, []);
 
@@ -189,7 +188,9 @@ export function useLiveMeeting() {
         transcript: progress.transcript,
       });
 
-      progressRef.current = null; // 会议真正结束，没有可恢复的进度了
+      // 会议真正结束：进度和存档都清掉，下次进页面不会再弹出"继续"。
+      progressRef.current = null;
+      clearSession();
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         return; // 用户主动取消，静默退出
@@ -255,10 +256,34 @@ export function useLiveMeeting() {
     await runLoop(controller);
   }, [runLoop]);
 
-  // 组件卸载时取消在途请求，避免内存泄漏和幽灵请求。
+  // ① 自动存档：会议状态变化时把"画面 + 进度"写进 localStorage。
+  //    只在"没人正在说话"的时刻写——否则逐字流式期间每个字都要写一次硬盘，太浪费。
+  //    而"某人刚说完"正好就是最合适的检查点。
   useEffect(() => {
-    return () => cancel();
-  }, [cancel]);
+    if (!progressRef.current) return; // 没有进行中的会议，不用存
+    if (state.activeSpeaker) return; // 正在说话中，等说完再存
+    saveSession({ state, progress: progressRef.current });
+  }, [state]);
+
+  // ② 开机恢复：首次挂载时看看上次有没有没开完的会议。
+  //    恢复出来的会议一律停在"暂停"态，等用户主动点「继续会议」，
+  //    绝不自动开跑——否则用户一进页面就被扣掉 API 额度。
+  useEffect(() => {
+    const saved = loadSession();
+    if (!saved) return;
+
+    progressRef.current = saved.progress;
+    pausedRef.current = true;
+    setIsPaused(true);
+    dispatch({ type: "restore", state: saved.state });
+  }, []);
+
+  // ③ 组件卸载：只中断在途请求，不清理进度。
+  //    ⚠️ 这里不能调 cancel()——它会清掉存档，而 React 开发模式会故意"挂载→卸载→再挂载"
+  //    一次来暴露副作用问题，那样刚恢复出来的会议会被立刻删掉。
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   return { state, isRunning, isPaused, start, pause, resume, cancel };
 }

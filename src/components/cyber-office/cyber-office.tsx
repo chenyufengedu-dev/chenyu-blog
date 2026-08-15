@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import OfficeScene from "./office-scene";
 import { useReplay } from "./use-replay";
 import { useLiveMeeting } from "./use-live-meeting";
@@ -73,7 +73,13 @@ function SummaryPanel({ summary }: { summary: string | null }) {
   );
 }
 
-function SubtitleBar({ state }: { state: MeetingState }) {
+function SubtitleBar({
+  state,
+  onSkip,
+}: {
+  state: MeetingState;
+  onSkip?: () => void; // 传入则在字幕右上角显示“跳过打字机”，作为这条字幕的控制
+}) {
   // 一处字幕搞定三种情况：错误 / 当前发言者 / 主持人串场
   let speaker = "";
   let text = "";
@@ -84,24 +90,44 @@ function SubtitleBar({ state }: { state: MeetingState }) {
     text = state.error;
     accent = true;
   } else if (state.activeSpeaker && state.roles[state.activeSpeaker]?.bubble) {
+    // 有人正在说：显示逐字增长的实时发言
     speaker = getRole(state.activeSpeaker).name;
     text = state.roles[state.activeSpeaker].bubble;
     accent = true;
-  } else if (state.hostText) {
-    speaker = getRole("host").name;
-    text = state.hostText;
+  } else {
+    // 没人在说：显示"最后说完的那句"。
+    // 这里必须取 transcript 的最后一条，而不是 hostText——因为 hostText 是本轮开头
+    // 主持人的串场词，比刚说完的角色发言更旧，直接用它字幕会"倒退"回上一句。
+    const last = state.transcript.at(-1);
+    if (last) {
+      speaker = getRole(last.speaker).name;
+      text = last.text;
+      accent = last.speaker !== "host";
+    }
   }
 
   if (!text) return null; // 没内容就不占位
 
   return (
-    <div className="border-2 border-border bg-bg-subtle px-5 py-4">
-      <p
-        className="mb-1.5 text-xs font-medium"
-        style={{ color: accent ? "#ea580c" : "var(--text-muted)" }}
-      >
-        {speaker}
-      </p>
+    // 与舞台/其它卡片统一：1px 边 + rounded-lg（原来的 border-2 直角在页面里很突兀）。
+    <div className="rounded-lg border border-border bg-bg-subtle px-5 py-4">
+      {/* 顶行：左边发言者名，右边（可选）跳过按钮，同一行更有归属感 */}
+      <div className="mb-1.5 flex items-center justify-between gap-3">
+        <p
+          className="text-xs font-medium"
+          style={{ color: accent ? "#ea580c" : "var(--text-muted)" }}
+        >
+          {speaker}
+        </p>
+        {onSkip && (
+          <button
+            onClick={onSkip}
+            className="shrink-0 text-xs text-text-muted transition-colors hover:text-accent"
+          >
+            跳过打字机 ⏭
+          </button>
+        )}
+      </div>
       <p className="text-sm leading-[1.7] text-text-secondary">{text}</p>
     </div>
   );
@@ -144,8 +170,8 @@ export default function CyberOffice() {
 
   // 当前展示的会议状态：回放模式看 replay.state，实时模式看 live.state。
   const state = mode === "live" ? live.state : replay.state;
-  // 任意一种会议正在跑时，都禁用按钮，避免两个流同时改 UI。
-  const busy = replay.isPlaying || live.isRunning;
+  // 暂停中的会议也算"占用中"：此时不允许改议题或另起一场，避免状态打架。
+  const busy = replay.isPlaying || live.isRunning || live.isPaused;
   const canRunReplay = !replay.isPlaying;
   const canRunLive = topic.trim().length >= 6 && !busy;
 
@@ -157,121 +183,156 @@ export default function CyberOffice() {
     !state.summary &&
     !state.error;
 
-  const helperText = useMemo(() => {
-    // useMemo 只是避免每次渲染都重新算这段提示文字；这里不是必须，但语义清楚。
-    //useMemo: 在组件重新渲染（re-render）时，只有在特定的依赖项([mode, state.topic, topic])发生变化时，才会重新执行该计算过程
-    if (mode === "live") return state.topic || topic;
-    return state.topic || "点击下方按钮，回放一场样本会议。";
-  }, [mode, state.topic, topic]);
-
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-4 rounded-lg border border-border bg-bg-subtle p-5">
-        <label className="flex flex-col gap-2 text-sm text-text-secondary">
-          你想让这支 AI 团队讨论什么问题？
-          <textarea
-            value={topic}
-            onChange={(event) => setTopic(event.target.value)}
-            disabled={busy}
-            rows={3}
-            placeholder="输入你的问题，或点下方示例试试……"
-            className="resize-none rounded-md border border-border bg-background px-3 py-2 text-sm leading-[1.7] text-text-primary outline-none transition-colors focus:border-accent disabled:cursor-not-allowed disabled:opacity-60"
-          />
-        </label>
+    <div className="flex flex-col gap-12">
+      {/* ===== Hero：桌面双栏（左控制 / 右舞台），移动端单列 ===== */}
+      {/* 左栏固定 380px；右栏用 minmax(0,1fr) 允许缩到舞台原生 760px 以下
+          （舞台自带 ResizeObserver 等比缩放）。若右栏写成 1fr，其最小值是
+          内容宽度 760px，会把左栏挤扁——这是 CSS Grid 常见坑。 */}
+      <div className="grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)] lg:items-start">
+        {/* 左栏：标题 + 副标题 + 控制区 */}
+        <div className="flex flex-col gap-5">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl">
+              Cyber <span className="text-accent">Office</span>
+            </h1>
+            <p className="mt-3 text-base leading-[1.7] text-text-secondary">
+              一个多 Agent
+              协作实验室。给一个议题，角色们围坐圆桌轮流发言、由主持人动态调度，最后产出结论。
+            </p>
+          </div>
 
-        {/* 示例议题 chip：点一下填进输入框 */}
-        <div className="flex flex-wrap gap-2">
-          {EXAMPLE_TOPICS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTopic(t)}
-              disabled={busy}
-              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs text-text-secondary transition-colors hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {t}
-            </button>
-          ))}
+          {/* 控制区卡片（原样，只是搬进左栏） */}
+          <div className="flex flex-col gap-4 rounded-lg border border-border bg-bg-subtle p-5">
+            <label className="flex flex-col gap-2 text-sm text-text-secondary">
+              你想让这支 AI 团队讨论什么问题？
+              <textarea
+                value={topic}
+                onChange={(event) => setTopic(event.target.value)}
+                disabled={busy}
+                rows={3}
+                placeholder="输入你的问题，或点下方示例试试……"
+                className="resize-none rounded-md border border-border bg-background px-3 py-2 text-sm leading-[1.7] text-text-primary outline-none transition-colors focus:border-accent disabled:cursor-not-allowed disabled:opacity-60"
+              />
+            </label>
+
+            {/* 示例议题：窄栏里改成整齐的满宽列表，避免三条参差不齐的小方块 */}
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs text-text-muted">试试这些问题</p>
+              {EXAMPLE_TOPICS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTopic(t)}
+                  disabled={busy}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-left text-xs leading-[1.6] text-text-secondary transition-colors hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => {
+                  setMode("live");
+                  live.start(topic, LIVE_PARTICIPANTS);
+                }}
+                disabled={!canRunLive}
+                className="rounded-md border border-accent/25 bg-accent-subtle px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {live.isRunning ? "会议进行中…" : "用我的议题开始"}
+              </button>
+
+              <button
+                onClick={() => {
+                  live.cancel();
+                  setMode("replay");
+                  replay.start();
+                }}
+                disabled={!canRunReplay}
+                className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {replay.isPlaying ? "演示回放中…" : "看一场演示"}
+              </button>
+
+              {(live.isRunning || live.isPaused) && (
+                <button
+                  onClick={live.cancel}
+                  className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
+                >
+                  停止会议
+                </button>
+              )}
+
+              {/* 实时会议的暂停/继续。暂停后不再发起下一轮请求，真正停止调用大模型。 */}
+              {mode === "live" && (live.isRunning || live.isPaused) && (
+                <button
+                  onClick={() => (live.isPaused ? live.resume() : live.pause())}
+                  className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
+                >
+                  {live.isPaused ? "继续会议" : "暂停会议"}
+                </button>
+              )}
+
+              {mode === "replay" && replay.isPlaying && (
+                <button
+                  onClick={() =>
+                    replay.isPaused ? replay.resume() : replay.pause()
+                  }
+                  className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
+                >
+                  {replay.isPaused ? "继续" : "暂停"}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
-        <p className="text-sm leading-[1.7] text-text-secondary">
-          {helperText}
-        </p>
-
-        <div className="flex flex-wrap gap-3">
-          {/* 主入口：用用户自己的议题跑真实会议 */}
-          <button
-            onClick={() => {
-              setMode("live");
-              live.start(topic, LIVE_PARTICIPANTS);
-            }}
-            disabled={!canRunLive}
-            className="rounded-md border border-accent/25 bg-accent-subtle px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/15 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {live.isRunning ? "会议进行中…" : "用我的议题开始"}
-          </button>
-
-          {/* 次入口：零门槛看一场预生成的样本会议 */}
-          <button
-            onClick={() => {
-              live.cancel();
-              setMode("replay");
-              replay.start();
-            }}
-            disabled={!canRunReplay}
-            className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {replay.isPlaying ? "演示回放中…" : "看一场演示"}
-          </button>
-
-          {live.isRunning && (
+        {/* 右栏：状态条 + 思考/错误 + 舞台 + 字幕 */}
+        <div className="flex flex-col gap-3">
+          <StatusBar state={state} />
+          {mode === "live" && live.isPaused && live.isRunning && (
+            <p className="text-sm text-text-muted">
+              本轮说完后暂停…（正在说的这句会讲完）
+            </p>
+          )}
+          {mode === "live" && live.isPaused && !live.isRunning && (
+            <p className="text-sm text-text-muted">
+              会议已暂停 · 未在调用模型。点「继续会议」接着开。
+            </p>
+          )}
+          {thinking && !live.isPaused && (
+            <p className="text-sm text-text-muted">AI 正在思考下一步…</p>
+          )}
+          {state.error && mode === "live" && !live.isRunning && (
             <button
-              onClick={live.cancel}
-              className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
+              onClick={() => live.start(topic, LIVE_PARTICIPANTS)}
+              className="self-start rounded-md border border-accent/25 bg-accent-subtle px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/15"
             >
-              停止会议
+              重试
             </button>
           )}
-
-          {mode === "replay" && replay.isPlaying && (
-            <button
-              onClick={() =>
-                replay.isPaused ? replay.resume() : replay.pause()
-              }
-              className="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
-            >
-              {replay.isPaused ? "继续" : "暂停"}
-            </button>
-          )}
+          <OfficeScene state={state} />
+          <SubtitleBar
+            state={state}
+            onSkip={
+              mode === "replay" && replay.isPlaying && state.activeSpeaker
+                ? replay.skip
+                : undefined
+            }
+          />
         </div>
       </div>
 
-      <StatusBar state={state} />
-      {thinking && (
-        <p className="text-sm text-text-muted">AI 正在思考下一步…</p>
-      )}
-      {state.error && mode === "live" && !live.isRunning && (
-        <button
-          onClick={() => live.start(topic, LIVE_PARTICIPANTS)}
-          className="self-start rounded-md border border-accent/25 bg-accent-subtle px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/15"
-        >
-          重试
-        </button>
-      )}
-      <OfficeScene state={state} />
-      <SubtitleBar state={state} />
-      {mode === "replay" && replay.isPlaying && state.activeSpeaker && (
-        <button
-          onClick={replay.skip}
-          className="self-start text-xs text-text-muted transition-colors hover:text-accent"
-        >
-          跳过打字机 ⏭
-        </button>
-      )}
-
+      {/* ===== 结论区 ===== */}
       <SummaryPanel summary={state.summary} />
-      <TranscriptPanel state={state} />
+
+      {/* ===== 编排面板（技术亮点，独占一块） ===== */}
       <OrchestrationPanel state={state} />
+
+      {/* ===== 发言记录（默认折叠） ===== */}
+      <TranscriptPanel state={state} />
     </div>
   );
 }

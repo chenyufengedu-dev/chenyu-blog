@@ -4,7 +4,9 @@ export const LIVE_MEETING_LIMITS = {
   maxTurns: 4,
   moderatorMaxTokens: 420,
   roleMaxTokens: 160,
-  summaryMaxTokens: 520,
+  // 总结要写"核心结论 + 文章大纲 + 下一步行动"，520 太小会把结论从中间硬切断。
+  // 给足预算，同时在 prompt 里限制篇幅（见 buildSummarySystemPrompt），双管齐下。
+  summaryMaxTokens: 1400,
   perIpHourlyLimit: 3,
   perIpHourlyWindow: "1 h",
   globalMinuteLimit: 5,

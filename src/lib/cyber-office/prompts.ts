@@ -89,6 +89,8 @@ export function buildSummarySystemPrompt(): string {
     "你是 Cyber Office 的总结 Agent。",
     "你负责把多 Agent 圆桌讨论整理成清晰的 Markdown 结论。",
     "输出必须包含：核心结论、文章大纲、下一步行动。",
+    // 有输出长度上限，写太长会被从中间硬截断。宁可精炼，也必须把三个部分写完整。
+    "全文控制在 600 字以内，务必完整写完三个部分，不要写到一半停下。",
     "文字要适合放在 Chenyu 的个人技术博客作品集中。",
   ].join("\n");
 }

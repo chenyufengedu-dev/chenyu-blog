@@ -110,6 +110,15 @@ async function runStep(params: {
   return result;
 }
 
+// 会议进度：暂停后要靠它从原处接着跑，所以必须存在 ref 里跨调用存活。
+interface MeetingProgress {
+  topic: string;
+  participants: RoleId[];
+  transcript: TranscriptTurn[];
+  turn: number;
+  discussionDone: boolean; // 讨论阶段是否已结束（接下来该收口总结）
+}
+
 export function useLiveMeeting() {
   const [state, dispatch] = useReducer(
     applyEvent,
@@ -117,80 +126,139 @@ export function useLiveMeeting() {
     createInitialState,
   );
   const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  // 用 ref 而不是 state 存"是否暂停"：异步循环里要读到**最新**的值，
+  // 而 state 在闭包里会是旧快照。isPaused 那个 state 只负责驱动按钮文案。
+  const pausedRef = useRef(false);
+  const progressRef = useRef<MeetingProgress | null>(null);
+
   const cancel = useCallback(() => {
-    // 只发取消信号；清理 running 状态放在各自请求的 finally 里，
-    // 避免旧请求误关掉刚启动的新请求。
+    // 彻底终止：清空进度，之后不能再 resume。
+    pausedRef.current = false;
+    setIsPaused(false);
+    progressRef.current = null;
     abortRef.current?.abort();
+  }, []);
+
+  // 会议主循环：从 progressRef 的当前进度接着跑。start 和 resume 都调它。
+  const runLoop = useCallback(async (controller: AbortController) => {
+    const progress = progressRef.current;
+    if (!progress) return;
+
+    setIsRunning(true);
+
+    try {
+      while (!progress.discussionDone && progress.turn < CLIENT_MAX_TURNS) {
+        // ★ 暂停检查点：就在这里。已暂停就直接退出循环，
+        //   不发起下一次请求 —— 这就是"真暂停"的全部秘密。
+        if (pausedRef.current) return;
+
+        const result = await runStep({
+          body: {
+            topic: progress.topic,
+            participants: progress.participants,
+            transcript: progress.transcript,
+            turn: progress.turn,
+            mode: "turn",
+          },
+          signal: controller.signal,
+          dispatch,
+          transcript: progress.transcript,
+        });
+
+        if (result.failed) return; // 错误事件已 dispatch，收工
+        progress.turn = result.nextTurn;
+        progress.discussionDone = result.done;
+      }
+
+      // 讨论跑完了，但如果用户刚好在这时按了暂停，总结也先别做。
+      if (pausedRef.current) return;
+
+      await runStep({
+        body: {
+          topic: progress.topic,
+          participants: progress.participants,
+          transcript: progress.transcript,
+          turn: progress.turn,
+          mode: "summarize",
+        },
+        signal: controller.signal,
+        dispatch,
+        transcript: progress.transcript,
+      });
+
+      progressRef.current = null; // 会议真正结束，没有可恢复的进度了
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return; // 用户主动取消，静默退出
+      }
+
+      dispatch({
+        type: "error",
+        message: LIVE_MEETING_MESSAGES.networkFailed,
+      });
+    } finally {
+      // 竞态防御：只有全局控制器仍是自己创建的那个，才清理状态。
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        setIsRunning(false);
+      }
+    }
   }, []);
 
   const start = useCallback(
     async (topic: string, participants: RoleId[]) => {
-      cancel(); // 保证同一时刻只有最新一场会议在跑
+      cancel(); // 保证同一时刻只有最新一场会议
       dispatch({ type: "reset" });
-      setIsRunning(true);
+
+      pausedRef.current = false;
+      setIsPaused(false);
 
       const controller = new AbortController();
       abortRef.current = controller;
 
-      // 会议历史由前端持有：每一步都带给服务端，服务端自己不记任何东西。
-      // 这也是之后"暂停后还能继续"的基础——进度就在这个数组里。
-      const transcript: TranscriptTurn[] = [];
+      // 全新会议：进度从零开始。
+      progressRef.current = {
+        topic,
+        participants,
+        transcript: [],
+        turn: 0,
+        discussionDone: false,
+      };
 
-      try {
-        // meeting_start 只是初始化画面、不调模型，前端本地发一条即可。
-        dispatch({ type: "meeting_start", topic, participants });
+      // meeting_start 只初始化画面、不调模型，前端本地发。
+      dispatch({ type: "meeting_start", topic, participants });
 
-        let turn = 0;
-        let done = false;
-
-        // 逐轮驱动。以后的"暂停"，就是在这个循环里不再发起下一轮请求。
-        while (!done && turn < CLIENT_MAX_TURNS) {
-          const result = await runStep({
-            body: { topic, participants, transcript, turn, mode: "turn" },
-            signal: controller.signal,
-            dispatch,
-            transcript,
-          });
-
-          if (result.failed) return; // 错误事件已经 dispatch 过，直接收工
-          turn = result.nextTurn;
-          done = result.done;
-        }
-
-        // 讨论结束 → 收口做总结（同一个接口，换个 mode）。
-        await runStep({
-          body: { topic, participants, transcript, turn, mode: "summarize" },
-          signal: controller.signal,
-          dispatch,
-          transcript,
-        });
-      } catch (error) {
-        // 用户主动取消：静默退出，不当成错误。
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-
-        dispatch({
-          type: "error",
-          message: LIVE_MEETING_MESSAGES.networkFailed,
-        });
-      } finally {
-        // 竞态防御：只有当全局控制器仍是自己创建的那个，才清理状态。
-        if (abortRef.current === controller) {
-          abortRef.current = null;
-          setIsRunning(false);
-        }
-      }
+      await runLoop(controller);
     },
-    [cancel],
+    [cancel, runLoop],
   );
+
+  // 暂停：只是把旗子插上。当前这一轮会自然说完，循环在下一个检查点停住。
+  const pause = useCallback(() => {
+    pausedRef.current = true;
+    setIsPaused(true);
+  }, []);
+
+  // 继续：带着保存下来的进度，重新进入主循环。
+  const resume = useCallback(async () => {
+    if (!progressRef.current) return; // 没有可恢复的会议
+
+    pausedRef.current = false;
+    setIsPaused(false);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    await runLoop(controller);
+  }, [runLoop]);
 
   // 组件卸载时取消在途请求，避免内存泄漏和幽灵请求。
   useEffect(() => {
     return () => cancel();
   }, [cancel]);
 
-  return { state, isRunning, start, cancel };
+  return { state, isRunning, isPaused, start, pause, resume, cancel };
 }

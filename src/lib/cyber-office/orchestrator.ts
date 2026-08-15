@@ -95,7 +95,8 @@ export interface ChatModel {
   // complete 用于主持人决策和最终总结：一次性拿完整文本。
   complete(
     messages: ChatCompletionMessageParam[],
-    options?: { maxTokens?: number },
+    // responseFormat: "json" 会让底层开启 JSON 模式，强制模型只输出合法 JSON。
+    options?: { maxTokens?: number; responseFormat?: "json" },
   ): Promise<string>;
   // stream 用于角色发言：边生成边吐 token，前端气泡才能逐字出现。
   stream(messages: ChatCompletionMessageParam[]): AsyncIterable<string>;
@@ -109,6 +110,42 @@ export interface RunOneTurnOptions {
   turn: number; // 当前是第几轮，从 0 开始
   maxTurns?: number;
   decision?: ModeratorDecision; // 可选：直接指定本轮决策，跳过"问主持人"（人在回路用）
+}
+
+// 问主持人要本轮的调度决策。
+// 大模型的输出天生不保证格式：即使提示词写了"只输出 JSON"，它偶尔仍会多写一句解释、
+// 或者返回空。所以这里做两层防护：
+//   1) 开启 JSON 模式（responseFormat: "json"），由 API 层面强制输出合法 JSON；
+//   2) 万一仍然解析失败，再重试一次。两次都失败才认定是真故障。
+async function askModeratorDecision(
+  model: ChatModel,
+  topic: string,
+  participants: RoleId[],
+  transcript: TranscriptTurn[],
+): Promise<ModeratorDecision> {
+  const messages: ChatCompletionMessageParam[] = [
+    { role: "system", content: buildModeratorSystemPrompt(participants) },
+    { role: "user", content: buildModeratorUserPrompt(topic, transcript) },
+  ];
+
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const text = await model.complete(messages, { responseFormat: "json" });
+
+    try {
+      return parseModeratorDecision(text, participants);
+    } catch (error) {
+      lastError = error;
+      // 打印模型到底返回了什么，方便排查；截断避免刷屏。
+      console.warn("[cyber-office] 主持人输出不合法，重试", {
+        attempt,
+        text: text.slice(0, 200),
+      });
+    }
+  }
+
+  throw lastError;
 }
 
 // 只执行「一轮」：问主持人 → 点名 → 角色发言。
@@ -129,11 +166,12 @@ export async function* runOneTurn({
   if (givenDecision) {
     decision = givenDecision;
   } else {
-    const moderatorText = await model.complete([
-      { role: "system", content: buildModeratorSystemPrompt(participants) },
-      { role: "user", content: buildModeratorUserPrompt(topic, transcript) },
-    ]);
-    decision = parseModeratorDecision(moderatorText, participants);
+    decision = await askModeratorDecision(
+      model,
+      topic,
+      participants,
+      transcript,
+    );
   }
 
   yield { type: "moderator_decision", decision };

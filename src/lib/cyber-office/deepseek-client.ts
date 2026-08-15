@@ -28,7 +28,7 @@ export function createDeepSeekChatModel(): ChatModel {
   return {
     async complete(
       messages: ChatCompletionMessageParam[],
-      options?: { maxTokens?: number },
+      options?: { maxTokens?: number; responseFormat?: "json" },
     ) {
       // complete 用在“主持人决策”和“最终总结”，所以不需要 stream。
       const response = await client.chat.completions.create({
@@ -37,6 +37,11 @@ export function createDeepSeekChatModel(): ChatModel {
         temperature: 0.4,
         max_tokens:
           options?.maxTokens ?? LIVE_MEETING_LIMITS.moderatorMaxTokens,
+        // 主持人决策必须是 JSON。只靠提示词“请求”模型输出 JSON 并不可靠，
+        // 它偶尔会多写一句解释甚至返回空；开启 JSON 模式由 API 层面强制保证格式。
+        ...(options?.responseFormat === "json"
+          ? { response_format: { type: "json_object" as const } }
+          : {}),
       });
 
       // SDK 返回 choices 数组；P2 只取第一个候选答案。

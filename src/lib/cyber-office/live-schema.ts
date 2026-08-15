@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { RoleId } from "./types";
+import { LIVE_MEETING_MESSAGES } from "./limits";
 
 // 这份 schema 是后端的第一道门：任何从浏览器传来的角色 id，
 // 都必须在这个白名单里，否则不能进入后面的 DeepSeek 调用。
@@ -57,4 +58,47 @@ export function parseRunMeetingRequest(
       participants,
     },
   };
+}
+
+// 单步接口的请求体：比整场多了 transcript（会议历史）和 turn（第几轮）。
+// 会议历史由前端持有并回传，所以必须严格校验长度，避免有人塞超大 payload。
+const transcriptTurnSchema = z.object({
+  speaker: roleIdSchema,
+  text: z.string().max(2000),
+});
+
+const stepRequestSchema = z.object({
+  topic: z.string().trim().min(6).max(240),
+  participants: z.array(roleIdSchema).min(2).max(6),
+  transcript: z.array(transcriptTurnSchema).max(20).default([]),
+  turn: z.number().int().min(0).max(20).default(0),
+  // turn = 跑一轮讨论；summarize = 收口做总结。
+  mode: z.enum(["turn", "summarize"]).default("turn"),
+});
+
+export interface StepRequest {
+  topic: string;
+  participants: RoleId[];
+  transcript: { speaker: RoleId; text: string }[];
+  turn: number;
+  mode: "turn" | "summarize";
+}
+
+export type ParseStepRequestResult =
+  | { ok: true; data: StepRequest }
+  | { ok: false; message: string };
+
+export function parseStepRequest(input: unknown): ParseStepRequestResult {
+  const parsed = stepRequestSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: LIVE_MEETING_MESSAGES.invalidRequest };
+  }
+
+  // 和整场接口同样的规则：强制带上 host，去掉 summarizer。
+  const deduped = Array.from(
+    new Set<RoleId>(["host", ...parsed.data.participants]),
+  );
+  const participants = deduped.filter((id) => id !== "summarizer");
+
+  return { ok: true, data: { ...parsed.data, participants } };
 }

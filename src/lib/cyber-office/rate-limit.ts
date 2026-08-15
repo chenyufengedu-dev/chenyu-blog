@@ -1,7 +1,11 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { LIVE_MEETING_LIMITS, LIVE_MEETING_MESSAGES } from "./limits";
 import { PublicLiveMeetingError } from "./live-errors";
+import {
+  LIVE_MEETING_LIMITS,
+  LIVE_MEETING_MESSAGES,
+  LIVE_STEP_LIMITS,
+} from "./limits";
 
 type GuardResult =
   | { allowed: true }
@@ -16,8 +20,30 @@ interface DailyBudgetStore {
 }
 
 let redis: Redis | null | undefined;
-let perIpLimiter: Ratelimit | null | undefined;
-let globalLimiter: Ratelimit | null | undefined;
+// 两套额度：meeting = 老的"整场"接口 /run；step = 新的"单步"接口 /step。
+export type GuardScope = "meeting" | "step";
+
+const perIpLimiters = new Map<GuardScope, Ratelimit>();
+const globalLimiters = new Map<GuardScope, Ratelimit>();
+
+function limitsFor(scope: GuardScope) {
+  if (scope === "step") {
+    return {
+      perIp: LIVE_STEP_LIMITS.perIpHourlyLimit,
+      perIpWindow: LIVE_STEP_LIMITS.perIpHourlyWindow,
+      global: LIVE_STEP_LIMITS.globalMinuteLimit,
+      globalWindow: LIVE_STEP_LIMITS.globalMinuteWindow,
+      daily: LIVE_STEP_LIMITS.dailyBudget,
+    };
+  }
+  return {
+    perIp: LIVE_MEETING_LIMITS.perIpHourlyLimit,
+    perIpWindow: LIVE_MEETING_LIMITS.perIpHourlyWindow,
+    global: LIVE_MEETING_LIMITS.globalMinuteLimit,
+    globalWindow: LIVE_MEETING_LIMITS.globalMinuteWindow,
+    daily: LIVE_MEETING_LIMITS.dailyLiveRunBudget,
+  };
+}
 
 function hasUpstashEnv() {
   return Boolean(
@@ -39,43 +65,51 @@ function getRedis() {
   return redis;
 }
 
-function getPerIpLimiter() {
+function getPerIpLimiter(scope: GuardScope) {
   const client = getRedis();
   if (!client) return null;
-  if (perIpLimiter !== undefined) return perIpLimiter;
 
-  perIpLimiter = new Ratelimit({
+  const cached = perIpLimiters.get(scope);
+  if (cached) return cached;
+
+  const l = limitsFor(scope);
+  const limiter = new Ratelimit({
     redis: client,
-    prefix: "cyber-office:live:ip",
-    //开启内部的数据分析打点
+    // meeting 保持原来的 prefix，避免改动影响已有计数；step 用独立 key。
+    prefix:
+      scope === "meeting"
+        ? "cyber-office:live:ip"
+        : "cyber-office:live:ip:step",
     analytics: true,
     timeout: 1000,
-    limiter: Ratelimit.slidingWindow(
-      LIVE_MEETING_LIMITS.perIpHourlyLimit,
-      LIVE_MEETING_LIMITS.perIpHourlyWindow,
-    ),
+    limiter: Ratelimit.slidingWindow(l.perIp, l.perIpWindow),
   });
 
-  return perIpLimiter;
+  perIpLimiters.set(scope, limiter);
+  return limiter;
 }
 
-function getGlobalLimiter() {
+function getGlobalLimiter(scope: GuardScope) {
   const client = getRedis();
   if (!client) return null;
-  if (globalLimiter !== undefined) return globalLimiter;
 
-  globalLimiter = new Ratelimit({
+  const cached = globalLimiters.get(scope);
+  if (cached) return cached;
+
+  const l = limitsFor(scope);
+  const limiter = new Ratelimit({
     redis: client,
-    prefix: "cyber-office:live:global",
+    prefix:
+      scope === "meeting"
+        ? "cyber-office:live:global"
+        : "cyber-office:live:global:step",
     analytics: true,
     timeout: 1000,
-    limiter: Ratelimit.fixedWindow(
-      LIVE_MEETING_LIMITS.globalMinuteLimit,
-      LIVE_MEETING_LIMITS.globalMinuteWindow,
-    ),
+    limiter: Ratelimit.fixedWindow(l.global, l.globalWindow),
   });
 
-  return globalLimiter;
+  globalLimiters.set(scope, limiter);
+  return limiter;
 }
 
 export function getClientIp(request: Request): string {
@@ -109,9 +143,14 @@ export function secondsUntilNextUtcDay(date = new Date()): number {
 export async function consumeDailyLiveRunBudget(
   store: DailyBudgetStore,
   date = new Date(),
-  budget = LIVE_MEETING_LIMITS.dailyLiveRunBudget,
+  // 显式标注 number：limits.ts 用了 as const，默认值的类型是字面量 30，
+  // 不标注的话参数类型会被推断成 30，传"按步额度"就会类型报错。
+  budget: number = LIVE_MEETING_LIMITS.dailyLiveRunBudget,
+  scope: GuardScope = "meeting",
 ) {
-  const key = `cyber-office:live:daily:${getUtcDateKey(date)}`;
+  // meeting 沿用原来的 key 格式；step 用带后缀的独立 key，两套预算互不干扰。
+  const scopeSuffix = scope === "meeting" ? "" : `${scope}:`;
+  const key = `cyber-office:live:daily:${scopeSuffix}${getUtcDateKey(date)}`;
   const used = await store.incr(key);
 
   // 第一次创建当天 key 时加过期时间，第二天自然清零。
@@ -134,6 +173,7 @@ function retryAfterSeconds(reset: number) {
 
 export async function guardLiveMeetingRequest(
   request: Request,
+  scope: GuardScope = "meeting",
 ): Promise<GuardResult> {
   const client = getRedis();
   //检查有没有配置 Redis 数据库
@@ -151,7 +191,7 @@ export async function guardLiveMeetingRequest(
   }
 
   const ip = getClientIp(request);
-  const perIp = await getPerIpLimiter()?.limit(ip);
+  const perIp = await getPerIpLimiter(scope)?.limit(ip);
 
   if (perIp && !perIp.success) {
     return {
@@ -166,7 +206,7 @@ export async function guardLiveMeetingRequest(
   }
 
   // 全局防瘫痪
-  const global = await getGlobalLimiter()?.limit("all");
+  const global = await getGlobalLimiter(scope)?.limit("all");
 
   if (global && !global.success) {
     return {
@@ -181,7 +221,12 @@ export async function guardLiveMeetingRequest(
   }
 
   // 每日预算核销
-  const daily = await consumeDailyLiveRunBudget(client);
+  const daily = await consumeDailyLiveRunBudget(
+    client,
+    new Date(),
+    limitsFor(scope).daily,
+    scope,
+  );
 
   if (!daily.allowed) {
     return {

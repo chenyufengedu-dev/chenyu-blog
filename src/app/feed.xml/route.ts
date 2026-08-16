@@ -1,8 +1,8 @@
 // src/app/feed.xml/route.ts
 import RSS from "rss";
 import { getAllPostsMeta } from "@/lib/mdx";
-
-const SITE_URL = "https://chenyu-blog.vercel.app";
+// 域名统一从 @/lib/site 取，换域名只改那一处。
+import { SITE_URL } from "@/lib/site";
 
 // App Router 架构中，任何命名为 route.ts 的文件都会变成一个后端的 API 接口
 // GET()：这表示该接口只响应 HTTP 的 GET 请求。当用户的 RSS 阅读器在后台静默访问 https://chenyu-blog.vercel.app/feed.xml 时，就会触发这个函数。

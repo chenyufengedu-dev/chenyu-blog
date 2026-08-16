@@ -3,7 +3,7 @@ import BlogList from "@/components/blog/blog-list";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "博客 | Chenyu",
+  title: "博客",
   description: "记录技术实践与深度思考",
 };
 

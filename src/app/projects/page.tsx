@@ -4,7 +4,7 @@ import ProjectList from "@/components/projects/project-list";
 import { projectsData } from "@/lib/projects";
 
 export const metadata: Metadata = {
-  title: "项目 | Chenyu",
+  title: "项目",
   description: "开源项目、技术实践与实验室成果展示",
 };
 

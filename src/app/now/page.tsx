@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ArrowUpRight, ChevronDown } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Now | Chenyu",
+  title: "Now",
   description: "记录我此刻的关注点与正在做的事。",
 };
 

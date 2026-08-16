@@ -13,7 +13,7 @@ import ContactForm from "@/components/contact/contact-form";
 
 //  SEO 元数据
 export const metadata: Metadata = {
-  title: "关于 | Chenyu",
+  title: "关于",
   description: "关于我的背景、技能与经历",
 };
 

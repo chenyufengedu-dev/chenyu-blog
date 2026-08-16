@@ -8,6 +8,7 @@ import ThemeToggle from "../theme-toggle";
 const navLinks = [
   { href: "/blog", label: "博客" },
   { href: "/projects", label: "项目" },
+  { href: "/cyber-office", label: "Cyber Office" },
   { href: "/about", label: "关于" },
   { href: "/now", label: "Now" },
 ];

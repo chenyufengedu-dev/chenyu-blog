@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { getPostBySlug, getAllPostsMeta, getAdjacentPosts } from "@/lib/mdx";
+import { SITE_URL, SITE_NAME } from "@/lib/site";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import rehypePrettyCode from "rehype-pretty-code";
 import { notFound } from "next/navigation";
@@ -13,6 +15,52 @@ import MdxImage from "@/components/blog/mdx-image";
 export async function generateStaticParams() {
   const posts = getAllPostsMeta();
   return posts.map((post) => ({ slug: post.slug }));
+}
+
+// 1.5 动态生成每篇文章的「名片」(metadata)。
+// 列表页那种写死的 `export const metadata` 只适合固定页面；文章详情页是一个模板生成 N 篇，
+// 每篇标题/摘要都不同，必须用 generateMetadata 按 slug 动态产出。
+// 它决定了：浏览器标签页标题、Google 搜索结果、以及分享到微信/Twitter 时的预览卡片。
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+
+  let post;
+  try {
+    post = getPostBySlug(slug);
+  } catch {
+    // 文章不存在时给一份兜底名片，避免构建报错（页面本身仍会走 notFound）
+    return { title: "文章未找到" };
+  }
+
+  const { title, summary, date, tags } = post.metadata;
+  const url = `${SITE_URL}/blog/${slug}`;
+
+  return {
+    title,
+    description: summary,
+    keywords: tags,
+    alternates: { canonical: url }, // 告诉搜索引擎这篇文章的正式地址，避免重复内容
+    openGraph: {
+      // Open Graph：微信/Facebook/LinkedIn 等分享时读取的字段
+      type: "article",
+      title,
+      description: summary,
+      url,
+      siteName: SITE_NAME,
+      publishedTime: date,
+      tags,
+    },
+    twitter: {
+      // Twitter 用自己的一套标签
+      card: "summary_large_image",
+      title,
+      description: summary,
+    },
+  };
 }
 
 // 2. 自定义 MDX 组件：你可以在这里覆盖 Markdown 的默认标签样式

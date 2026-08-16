@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL, SITE_NAME } from "@/lib/site";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import Navbar from "@/components/layout/navbar";
@@ -11,7 +12,12 @@ import PageTransition from "@/components/layout/page-transition";
 // React.ReactNode是 children 的类型。它告诉计算机：“只要是 React 能渲染的东西（文字、标签、组件等），都可以传进来。”
 // Readonly<{ ... }>：这是一种保护机制，告诉程序：这个 children 参数是“只读”的，你不准在函数内部修改它。
 export const metadata: Metadata = {
-  title: "Chenyu",
+  // metadataBase：让各页 metadata 里的相对路径能被解析成完整网址（OG 图等需要）。
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_NAME, // 首页等没写 title 的页面用这个
+    template: `%s | ${SITE_NAME}`, // 子页面只写自己的名字，后缀自动补上
+  },
   description: "Chenyu 的个人技术博客与作品集",
 };
 

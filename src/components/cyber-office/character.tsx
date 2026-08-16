@@ -16,6 +16,17 @@ const POSE: Record<RoleStatus, "standing" | "raising" | "sitting"> = {
 // office-scene 定位也用这个值，所以 export 出去共用。
 export const CHAR_DISPLAY_H = 150; // 精灵含椅子；缩小一点，别遮住窗户
 
+// 这个角色会用到的全部帧。用于挂载时预加载，避免切帧时才去下载导致闪烁。
+const ALL_POSES = [
+  "sitting",
+  "act1",
+  "act2",
+  "blink",
+  "raising",
+  "standing",
+  "talking",
+] as const;
+
 interface CharacterProps {
   id: RoleId;
   name: string;
@@ -38,6 +49,16 @@ export default function Character({
   // 待机不做成"持续循环"（那样机械又像切图片），而是"平时静坐，隔几秒偶发一次
   // 小动作或眨眼"，像真人一样。每次动作只播它自己的几帧、结束回到坐姿。
   const [idlePose, setIdlePose] = useState("sitting");
+  // 预加载：把这个角色的所有帧提前塞进浏览器缓存。
+  // 不这么做的话，第一次切到某个动作时才开始下载，画面会闪一下。
+  // new Image() 只是触发下载，不需要放进 DOM。
+  useEffect(() => {
+    for (const pose of ALL_POSES) {
+      const img = new Image();
+      img.src = `/sprites/${id}-${pose}.png`;
+    }
+  }, [id]);
+
   useEffect(() => {
     if (!isIdle) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -106,24 +127,25 @@ export default function Character({
           transform: status === "raising_hand" ? "translateY(-4px)" : "none",
         }}
       >
-        {/* 发言时身后一圈柔和暖光聚光，把视线引到发言者身上 */}
-        {status === "speaking" && (
-          <span
-            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-            style={{
-              width: 150,
-              height: 190,
-              background:
-                "radial-gradient(circle, rgba(234,88,12,0.28) 0%, rgba(234,88,12,0) 68%)",
-              filter: "blur(4px)",
-              zIndex: -1,
-            }}
-          />
-        )}
-        {/* 发言时脚下一抹橙色微光 */}
-        {status === "speaking" && (
-          <span className="pointer-events-none absolute -bottom-1 left-1/2 h-1.5 w-10 -translate-x-1/2 rounded-full bg-accent/25 blur-[1px]" />
-        )}
+        {/* 发言时身后一圈柔和暖光。一直渲染、只改透明度，
+            这样亮起/暗下是渐变的，不会在切换发言者时"啪"地跳一下。 */}
+        <span
+          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-500 ease-out"
+          style={{
+            width: 150,
+            height: 190,
+            background:
+              "radial-gradient(circle, rgba(234,88,12,0.28) 0%, rgba(234,88,12,0) 68%)",
+            filter: "blur(4px)",
+            zIndex: -1,
+            opacity: status === "speaking" ? 1 : 0,
+          }}
+        />
+        {/* 发言时脚下一抹橙色微光，同样用透明度过渡 */}
+        <span
+          className="pointer-events-none absolute -bottom-1 left-1/2 h-1.5 w-10 -translate-x-1/2 rounded-full bg-accent/25 blur-[1px] transition-opacity duration-500 ease-out"
+          style={{ opacity: status === "speaking" ? 1 : 0 }}
+        />
 
         {/* 内层：温和呼吸浮动（错峰）。动作/眨眼靠上面的偶发调度换帧，无重影。 */}
         <div

@@ -4,11 +4,17 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { OfficeEvent } from "@/lib/cyber-office/types";
 import { applyEvent, createInitialState } from "@/lib/cyber-office/reducer";
 
-// 不同事件的播放间隔（毫秒）。token 很短，营造逐字打字感；说完后停顿久一点。
+// 不同事件的播放间隔（毫秒）。
 function delayFor(e: OfficeEvent): number {
   switch (e.type) {
-    case "token":
-      return 40;
+    case "token": {
+      // 逐字节奏：句末停顿最久、逗号次之，普通字带随机抖动。
+      // 固定 40ms 会均匀得像机器打字，加了停顿和抖动才有人在说话的感觉。
+      const ch = e.delta;
+      if (/[。！？…]/.test(ch)) return 300;
+      if (/[，、；：]/.test(ch)) return 170;
+      return 32 + Math.random() * 28; // 32~60ms
+    }
     case "host_speak":
       return 900;
     case "call_on":
@@ -16,7 +22,7 @@ function delayFor(e: OfficeEvent): number {
     case "speaking_start":
       return 250;
     case "speaking_end":
-      return 450;
+      return 600; // 说完多留一点余韵，再进下一轮
     case "summary":
       return 1000;
     default:

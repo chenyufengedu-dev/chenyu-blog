@@ -111,24 +111,28 @@ function SubtitleBar({
   return (
     // 与舞台/其它卡片统一：1px 边 + rounded-lg（原来的 border-2 直角在页面里很突兀）。
     <div className="rounded-lg border border-border bg-bg-subtle px-5 py-4">
-      {/* 顶行：左边发言者名，右边（可选）跳过按钮，同一行更有归属感 */}
-      <div className="mb-1.5 flex items-center justify-between gap-3">
-        <p
-          className="text-xs font-medium"
-          style={{ color: accent ? "#ea580c" : "var(--text-muted)" }}
-        >
-          {speaker}
-        </p>
-        {onSkip && (
-          <button
-            onClick={onSkip}
-            className="shrink-0 text-xs text-text-muted transition-colors hover:text-accent"
+      {/* key 换人时变化 → React 重新挂载这块 → 淡入动画重放。
+          这是"用 key 触发动画"的常见手法，比手动管理动画状态简单得多。 */}
+      <div key={speaker} className="subtitle-in">
+        {/* 顶行：左边发言者名，右边（可选）跳过按钮，同一行更有归属感 */}
+        <div className="mb-1.5 flex items-center justify-between gap-3">
+          <p
+            className="text-xs font-medium"
+            style={{ color: accent ? "#ea580c" : "var(--text-muted)" }}
           >
-            跳过打字机 ⏭
-          </button>
-        )}
+            {speaker}
+          </p>
+          {onSkip && (
+            <button
+              onClick={onSkip}
+              className="shrink-0 text-xs text-text-muted transition-colors hover:text-accent"
+            >
+              跳过打字机 ⏭
+            </button>
+          )}
+        </div>
+        <p className="text-sm leading-[1.7] text-text-secondary">{text}</p>
       </div>
-      <p className="text-sm leading-[1.7] text-text-secondary">{text}</p>
     </div>
   );
 }
@@ -305,8 +309,8 @@ export default function CyberOffice() {
           {mode === "live" && live.isPaused && !live.isRunning && (
             <p className="text-sm text-text-muted">
               会议已暂停 · 未在调用模型
-          {live.state.topic ? ` · 议题：${live.state.topic}` : ""}
-          。点「继续会议」接着开。
+              {live.state.topic ? ` · 议题：${live.state.topic}` : ""}
+              。点「继续会议」接着开。
             </p>
           )}
           {thinking && !live.isPaused && (

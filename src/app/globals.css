@@ -217,6 +217,21 @@
       transform: translateY(-1.5px);
     }
   }
+  /* 字幕换人时轻微淡入上移，避免内容硬切 */
+  @keyframes subtitle-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .subtitle-in {
+    animation: subtitle-in 0.28s ease-out;
+  }
 
   .pixel-talk {
     animation: pixel-talk 0.32s ease-in-out infinite;

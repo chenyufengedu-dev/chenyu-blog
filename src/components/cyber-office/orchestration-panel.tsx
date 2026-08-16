@@ -15,7 +15,7 @@ const DEFAULT_EXPERTS: RoleId[] = ["pm", "frontend", "bio", "reviewer"];
 function activeNode(state: MeetingState): "host" | "output" | RoleId | null {
   if (state.summary || state.phase === "ended") return "output";
   if (state.activeSpeaker) return state.activeSpeaker;
-  if (state.lastDecision) return "host";
+  if (state.decisions.length > 0) return "host";
   return null;
 }
 
@@ -124,7 +124,7 @@ export default function OrchestrationPanel({ state }: { state: MeetingState }) {
   const toggle = (key: NodeKey) =>
     setSelected((cur) => (cur === key ? null : key)); // 再点一次取消回看
 
-  // 详情区：选中了就回看该节点；没选中就跟随实时（lastDecision）。
+  // 详情区：选中了就回看该节点；没选中就跟随实时（取决策历史的最后一条）。
   function renderDetail() {
     if (selected === "host") {
       return <DecisionView decision={state.decisions.at(-1)} />;
@@ -140,17 +140,23 @@ export default function OrchestrationPanel({ state }: { state: MeetingState }) {
       return <DecisionView decision={decision} speech={speech} />;
     }
     // 未选中：实时当前决策
-    return <DecisionView decision={state.lastDecision} />;
+    return <DecisionView decision={state.decisions.at(-1) ?? null} />;
   }
 
   return (
+    // 技术亮点区。层次靠标题分量与留白建立，不加彩色装饰条。
     <div className="rounded-lg border border-border bg-bg-subtle">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between px-5 py-4 text-left"
       >
-        <span className="text-sm font-medium text-text-primary">
-          AI 智能体如何协作
+        <span className="flex flex-col gap-0.5">
+          <span className="text-base font-semibold text-text-primary">
+            AI 智能体如何协作
+          </span>
+          <span className="text-xs text-text-muted">
+            这场讨论背后的多 Agent 编排流程 · 点节点可回看
+          </span>
         </span>
         <span className="text-xs text-text-muted">
           {open ? "收起 ▲" : "展开 ▼"}
@@ -159,8 +165,9 @@ export default function OrchestrationPanel({ state }: { state: MeetingState }) {
 
       {open && (
         <div className="border-t border-border px-5 py-5">
-          {/* 调度流向图：实时高亮 + 可点击回看 */}
-          <div className="flex flex-wrap items-center gap-3">
+          {/* 调度流向图：实时高亮 + 可点击回看。
+              专家用 2 列网格（不是竖排一列），整块更矮更饱满、不再左右大片空白。 */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Node label="你的问题" active={false} />
             <Arrow />
             <Node
@@ -172,7 +179,7 @@ export default function OrchestrationPanel({ state }: { state: MeetingState }) {
               onClick={() => toggle("host")}
             />
             <Arrow />
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {experts.map((id) => (
                 <Node
                   key={id}

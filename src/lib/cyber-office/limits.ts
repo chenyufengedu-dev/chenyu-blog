@@ -1,7 +1,7 @@
 // P3 先用“实时会议次数”做预算，不做精确 token 计费。
 // 这些数字偏保守：够你演示能力，但不至于被陌生访问者刷爆额度。
 export const LIVE_MEETING_LIMITS = {
-  maxTurns: 4,
+  maxTurns: 6,
   moderatorMaxTokens: 420,
   roleMaxTokens: 160,
   // 总结要写"核心结论 + 文章大纲 + 下一步行动"，520 太小会把结论从中间硬切断。

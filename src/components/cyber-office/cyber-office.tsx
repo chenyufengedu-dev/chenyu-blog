@@ -73,70 +73,6 @@ function SummaryPanel({ summary }: { summary: string | null }) {
   );
 }
 
-function SubtitleBar({
-  state,
-  onSkip,
-}: {
-  state: MeetingState;
-  onSkip?: () => void; // 传入则在字幕右上角显示“跳过打字机”，作为这条字幕的控制
-}) {
-  // 一处字幕搞定三种情况：错误 / 当前发言者 / 主持人串场
-  let speaker = "";
-  let text = "";
-  let accent = false; // 发言者/错误用橙色名，主持人串场用灰色名
-
-  if (state.error) {
-    speaker = "系统";
-    text = state.error;
-    accent = true;
-  } else if (state.activeSpeaker && state.roles[state.activeSpeaker]?.bubble) {
-    // 有人正在说：显示逐字增长的实时发言
-    speaker = getRole(state.activeSpeaker).name;
-    text = state.roles[state.activeSpeaker].bubble;
-    accent = true;
-  } else {
-    // 没人在说：显示"最后说完的那句"。
-    // 这里必须取 transcript 的最后一条，而不是 hostText——因为 hostText 是本轮开头
-    // 主持人的串场词，比刚说完的角色发言更旧，直接用它字幕会"倒退"回上一句。
-    const last = state.transcript.at(-1);
-    if (last) {
-      speaker = getRole(last.speaker).name;
-      text = last.text;
-      accent = last.speaker !== "host";
-    }
-  }
-
-  if (!text) return null; // 没内容就不占位
-
-  return (
-    // 与舞台/其它卡片统一：1px 边 + rounded-lg（原来的 border-2 直角在页面里很突兀）。
-    <div className="rounded-lg border border-border bg-bg-subtle px-5 py-4">
-      {/* key 换人时变化 → React 重新挂载这块 → 淡入动画重放。
-          这是"用 key 触发动画"的常见手法，比手动管理动画状态简单得多。 */}
-      <div key={speaker} className="subtitle-in">
-        {/* 顶行：左边发言者名，右边（可选）跳过按钮，同一行更有归属感 */}
-        <div className="mb-1.5 flex items-center justify-between gap-3">
-          <p
-            className="text-xs font-medium"
-            style={{ color: accent ? "#ea580c" : "var(--text-muted)" }}
-          >
-            {speaker}
-          </p>
-          {onSkip && (
-            <button
-              onClick={onSkip}
-              className="shrink-0 text-xs text-text-muted transition-colors hover:text-accent"
-            >
-              跳过打字机 ⏭
-            </button>
-          )}
-        </div>
-        <p className="text-sm leading-[1.7] text-text-secondary">{text}</p>
-      </div>
-    </div>
-  );
-}
-
 function StatusBar({ state }: { state: MeetingState }) {
   // 三种阶段用不同文案；讨论中额外显示当前发言者。
   let label = "";
@@ -316,23 +252,34 @@ export default function CyberOffice() {
           {thinking && !live.isPaused && (
             <p className="text-sm text-text-muted">AI 正在思考下一步…</p>
           )}
-          {state.error && mode === "live" && !live.isRunning && (
+          {/* 错误提示：原本在字幕条里，字幕条删掉后挪到状态区 */}
+          {state.error && (
+            <div className="rounded-lg border border-border bg-bg-subtle px-4 py-3">
+              <p className="mb-1 text-xs font-medium text-accent">系统</p>
+              <p className="text-sm leading-[1.7] text-text-secondary">
+                {state.error}
+              </p>
+              {mode === "live" && !live.isRunning && (
+                <button
+                  onClick={() => live.start(topic, LIVE_PARTICIPANTS)}
+                  className="mt-2 rounded-md border border-accent/25 bg-accent-subtle px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/15"
+                >
+                  重试
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* 跳过打字机：原本在字幕条右上角 */}
+          {mode === "replay" && replay.isPlaying && state.activeSpeaker && (
             <button
-              onClick={() => live.start(topic, LIVE_PARTICIPANTS)}
-              className="self-start rounded-md border border-accent/25 bg-accent-subtle px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/15"
+              onClick={replay.skip}
+              className="self-start text-xs text-text-muted transition-colors hover:text-accent"
             >
-              重试
+              跳过打字机 ⏭
             </button>
           )}
           <OfficeScene state={state} />
-          <SubtitleBar
-            state={state}
-            onSkip={
-              mode === "replay" && replay.isPlaying && state.activeSpeaker
-                ? replay.skip
-                : undefined
-            }
-          />
         </div>
       </div>
 

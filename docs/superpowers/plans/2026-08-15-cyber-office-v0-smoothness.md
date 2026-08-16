@@ -5,16 +5,29 @@
 > **这一步在做什么**：不动任何美术资产，先把"技术性卡顿"修掉——切帧闪烁、聚光突现、字幕硬切、打字机机械感。
 > **为什么必须先做**：你说的"卡顿"其实是两回事。①**帧数太少**导致动作跳跃（加帧能解决）；②**换图时才去加载**导致闪烁（加帧反而更糟）。所以要先修 ②，否则 V1 做出的几十帧动画会比现在更卡。
 >
+> 教程约定同 `2026-08-11-cyber-office-pausable-tasks.md`：每步标明改哪个文件、贴带注释的代码、末尾给提交命令，步骤用 `- [ ]` 跟踪。
+>
 > 成本：一个下午。改 4 个文件，不碰美术。
 
 ---
 
-### Step 1: `character.tsx` —— 预加载全部角色帧
+## Task V0：动画与节奏止损
+
+**Files:**
+
+- Modify: `src/components/cyber-office/character.tsx`（Step 1、Step 2）
+- Modify: `src/app/globals.css`（Step 3）
+- Modify: `src/components/cyber-office/cyber-office.tsx`（Step 4）
+- Modify: `src/components/cyber-office/use-replay.ts`（Step 5）
+
+---
+
+- [x] **Step 1: `src/components/cyber-office/character.tsx` —— 预加载全部角色帧**
 
 > **病灶**：现在 `<img src={...}>` 在换 pose 时才让浏览器去取那张图。第一次切到 `act1`/`talking`/`raising` 时，图还没下载完，就会闪一下或短暂空白。
 > **解法**：组件挂载时把这个角色的 7 张帧全部预先下载进浏览器缓存。之后所有切换都是瞬时的。
 
-在 `character.tsx` 里，`CHAR_DISPLAY_H` 常量**之后**，加一个帧名列表：
+① 在 `CHAR_DISPLAY_H` 常量**之后**，加一个帧名列表：
 
 ```ts
 // 这个角色会用到的全部帧。用于挂载时预加载，避免切帧时才去下载导致闪烁。
@@ -29,7 +42,7 @@ const ALL_POSES = [
 ] as const;
 ```
 
-然后在组件里，"待机偶发动作"那个 `useEffect` **之前**，插入一个预加载 effect：
+② 在组件内部，"待机偶发动作"那个 `useEffect`（以 `if (!isIdle) return;` 开头的那个）**之前**，插入：
 
 ```tsx
   // 预加载：把这个角色的所有帧提前塞进浏览器缓存。
@@ -45,12 +58,12 @@ const ALL_POSES = [
 
 ---
 
-### Step 2: `character.tsx` —— 聚光改成渐隐渐现
+- [x] **Step 2: `src/components/cyber-office/character.tsx` —— 聚光改成渐隐渐现**
 
 > **病灶**：发言时的暖光和脚下橙光是 `{status === "speaking" && ...}` 条件渲染——说话瞬间"啪"地出现、说完"啪"地消失。这是"发言者切换瞬间"最刺眼的跳变来源。
 > **解法**：改成**一直渲染、用透明度过渡**。视觉上就变成柔和的亮起/暗下。
 
-把这两段：
+把这两段（在 `return` 里、"外层：仅举手时轻微上移"那个 div 内部）：
 
 ```tsx
         {/* 发言时身后一圈柔和暖光聚光，把视线引到发言者身上 */}
@@ -99,12 +112,9 @@ const ALL_POSES = [
 
 ---
 
-### Step 3: `globals.css` + `cyber-office.tsx` —— 字幕淡入
+- [ ] **Step 3: `src/app/globals.css` —— 加字幕淡入动画**
 
-> **病灶**：换人说话时，字幕条的内容是瞬间整体替换的，很硬。
-> **解法**：给字幕内容加一个轻微的淡入上移。用 `key` 强制换人时重新挂载，动画就会重放。
-
-**① `globals.css`**：找到 `@media (prefers-reduced-motion: no-preference) {` 这个块，在里面（和 `pixel-idle` 那些放一起）加：
+找到 `@media (prefers-reduced-motion: no-preference) {` 这个块，在它**里面**（和 `pixel-idle` / `pixel-talk` 那些放一起）加：
 
 ```css
   /* 字幕换人时轻微淡入上移，避免内容硬切 */
@@ -124,7 +134,16 @@ const ALL_POSES = [
   }
 ```
 
-**② `cyber-office.tsx`**：在 `SubtitleBar` 里，把最外层 `<div>` 内部的两块内容（顶行 + 正文）包进一个带 `key` 的容器。找到：
+> 放在这个 media 块里是为了尊重"减少动效"的系统设置——用户关掉动画时这条自动失效。
+
+---
+
+- [ ] **Step 4: `src/components/cyber-office/cyber-office.tsx` —— 字幕内容套上淡入**
+
+> **病灶**：换人说话时，字幕条的内容瞬间整体替换，很硬。
+> **解法**：用 `key={speaker}` 强制换人时重新挂载这块，淡入动画就会重放。
+
+在 `SubtitleBar` 组件的 `return` 里，找到：
 
 ```tsx
     <div className="rounded-lg border border-border bg-bg-subtle px-5 py-4">
@@ -132,7 +151,7 @@ const ALL_POSES = [
       <div className="mb-1.5 flex items-center justify-between gap-3">
 ```
 
-把第一行**之后**插入一个包裹层（注意末尾要补一个 `</div>`，见下）：
+在第一行**之后**插入一层带 key 的包裹 div：
 
 ```tsx
     <div className="rounded-lg border border-border bg-bg-subtle px-5 py-4">
@@ -143,26 +162,33 @@ const ALL_POSES = [
         <div className="mb-1.5 flex items-center justify-between gap-3">
 ```
 
-然后在正文那一行 `<p className="text-sm leading-[1.7] text-text-secondary">{text}</p>` **之后**、最外层 `</div>` **之前**，补上包裹层的收尾 `</div>`：
+然后到这个组件的结尾，找到正文那行和它后面的收尾：
 
 ```tsx
       <p className="text-sm leading-[1.7] text-text-secondary">{text}</p>
+    </div>
+  );
+```
+
+改成（给包裹层补一个 `</div>`）：
+
+```tsx
+        <p className="text-sm leading-[1.7] text-text-secondary">{text}</p>
       </div>
     </div>
   );
 ```
 
-> 如果括号对不上，最简单的检查方式：跑 `npx tsc --noEmit`，JSX 不闭合会直接报错。
+> 括号容易对不上。检查方式：跑 `npx tsc --noEmit`，JSX 不闭合会直接报错并指出行号。
 
 ---
 
-### Step 4: `use-replay.ts` —— 打字机节奏去机械感
+- [ ] **Step 5: `src/components/cyber-office/use-replay.ts` —— 打字机节奏去机械感**
 
 > **病灶**：每个字固定 40ms，均匀得像机器打字。真人说话有停顿、有快慢。
-> **解法**：标点后停久一点，普通字带一点随机抖动。
 > **注意**：这只影响**回放（看一场演示）**。实时会议的出字节奏由模型的流式输出决定，前端控制不了。
 
-把 `delayFor` 函数**整段替换**为：
+把文件顶部的 `delayFor` 函数**整段替换**为：
 
 ```ts
 // 不同事件的播放间隔（毫秒）。
@@ -194,7 +220,7 @@ function delayFor(e: OfficeEvent): number {
 
 ---
 
-### Step 5: 校验
+- [ ] **Step 6: 校验**
 
 ```bash
 npx tsc --noEmit && npm run lint && npm run test
@@ -202,7 +228,7 @@ npx tsc --noEmit && npm run lint && npm run test
 
 ---
 
-### Step 6: 实机验证
+- [ ] **Step 7: 实机验证**
 
 Run: `npm run dev`，点「看一场演示」，**完整看一遍**。
 
@@ -216,12 +242,16 @@ Run: `npm run dev`，点「看一场演示」，**完整看一遍**。
 
 ---
 
-### Step 7: 提交
+- [ ] **Step 8: 提交**
 
 ```bash
+npx tsc --noEmit && npm run build
 git add src/components/cyber-office/character.tsx src/components/cyber-office/cyber-office.tsx src/components/cyber-office/use-replay.ts src/app/globals.css
 git commit -m "perf(cyber-office): 预加载角色帧，聚光与字幕改为过渡，打字机节奏拟人化"
+git push
 ```
+
+> 推之前先 `npm run build`：本地构建过了，Vercel 基本不会再挂。
 
 ---
 

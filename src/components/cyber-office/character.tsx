@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import type { RoleId, RoleStatus } from "@/lib/cyber-office/types";
 
 // 非发言状态用哪张图。发言时在 standing(闭嘴)/talking(张嘴) 间循环，单独处理。
@@ -35,7 +35,7 @@ interface CharacterProps {
   showName?: boolean; // 名字是否在此渲染（场景里改由顶层统一画，避免被桌子挡）
 }
 
-export default function Character({
+function Character({
   id,
   name,
   status,
@@ -147,10 +147,12 @@ export default function Character({
           style={{ opacity: status === "speaking" ? 1 : 0 }}
         />
 
-        {/* 内层：温和呼吸浮动（错峰）。动作/眨眼靠上面的偶发调度换帧，无重影。 */}
+        {/* 内层：只有「发言中」才有身体动静（底部锚定的轻微起伏，椅子不动）。
+            待机保持静止——之前的呼吸浮动会带着椅子一起飘，已弃用。
+            错峰延迟让多人同时说话时不会整齐划一。 */}
         <div
-          className="pixel-idle"
-          style={{ animationDelay: `${(id.charCodeAt(0) % 7) * 0.4}s` }}
+          className={status === "speaking" ? "pixel-talk" : undefined}
+          style={{ animationDelay: `${(id.charCodeAt(0) % 7) * 0.13}s` }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- 精灵图需按原样显示 */}
           <img
@@ -187,3 +189,9 @@ export default function Character({
     </div>
   );
 }
+
+// 打字机每出一个字都会让整棵组件树重渲染，但角色的 props
+// （id / name / status / dimmed）在一个人说话的全过程中根本没变。
+// memo 让这 5 个角色直接跳过重渲染 —— 这是消除"字幕不流畅"的关键：
+// 渲染变轻后，打字机的 setTimeout 才不会被拖慢，出字节奏才均匀。
+export default memo(Character);

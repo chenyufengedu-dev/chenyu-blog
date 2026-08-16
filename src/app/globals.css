@@ -196,25 +196,17 @@
 /* ===== Cyber Office 像素小人动效 ===== */
 /* 只有用户没有开启"减少动态效果"时才播放，尊重无障碍偏好 */
 @media (prefers-reduced-motion: no-preference) {
-  /* 闲置：缓慢上下呼吸浮动 */
-  @keyframes pixel-idle {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-1px);
-    }
-  }
-
-  /* 发言：更快更明显的抖动，像在说话 */
+  /* 发言时的身体动静。
+     ⚠️ 不用 translateY：精灵图里含椅子，整体上下平移会让椅子跟着飘。
+     改用「底部锚定的轻微纵向缩放」——底边（椅脚/双脚）钉在原地不动，
+     只有上半身有起伏，读起来像说话时的呼吸，椅子不会跑。 */
   @keyframes pixel-talk {
     0%,
     100% {
-      transform: translateY(0);
+      transform: scaleY(1);
     }
     50% {
-      transform: translateY(-1.5px);
+      transform: scaleY(1.012);
     }
   }
   /* 字幕换人时轻微淡入上移，避免内容硬切 */
@@ -234,7 +226,9 @@
   }
 
   .pixel-talk {
-    animation: pixel-talk 0.32s ease-in-out infinite;
+    /* transform-origin: bottom 是关键：缩放以底边为支点，椅脚不动。 */
+    transform-origin: bottom center;
+    animation: pixel-talk 0.9s ease-in-out infinite;
   }
 
   /* 小猫被点击时蹦一下 */

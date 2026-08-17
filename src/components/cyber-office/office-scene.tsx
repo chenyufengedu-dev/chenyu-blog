@@ -57,10 +57,27 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
   const speakingId = participants.find(
     (p) => state.roles[p]?.status === "speaking",
   );
+  // ⚠️ 关键：只有"已经吐出第一个字"的人才算接管气泡。
+  // 实时模式下 host_speak / call_on / speaking_start 是同一批 SSE 到达、
+  // 在同一个 tick 里全部 dispatch 的，主持人的 speaking 状态活不过一帧。
+  // 如果按 speaking 状态直接切换，主持人的串场词一次都显示不出来
+  //（发言记录里有、气泡里没有，就是这么来的）。
+  // 所以被点名的人在开口之前，气泡仍然留给上一句——正好把模型思考的
+  // 那 1~3 秒等待窗口，用来显示主持人刚说的话。
+  const speakerWithText =
+    speakingId && (state.roles[speakingId]?.bubble ?? "").length > 0
+      ? speakingId
+      : undefined;
+
   const lastLine = state.transcript.at(-1);
-  const bubbleOwner = speakingId ?? lastLine?.speaker;
-  const fullText = speakingId
-    ? (state.roles[speakingId]?.bubble ?? "")
+  // 会议结束后不再留着最后一句气泡：散场了画面就该干净，
+  // 否则用户看着一个挂着的气泡，分不清会议是结束了还是卡住了。
+  const meetingEnded = state.phase === "ended";
+  const bubbleOwner = meetingEnded
+    ? undefined
+    : (speakerWithText ?? lastLine?.speaker);
+  const fullText = speakerWithText
+    ? (state.roles[speakerWithText]?.bubble ?? "")
     : (lastLine?.text ?? "");
 
   // ===== 打字机：整个场景唯一的"说话时钟" =====
@@ -83,8 +100,9 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
   }, [shown, fullText]);
 
   const isRevealing = shown < fullText.length; // 还在吐字
-  const waitingForText = speakingId != null && fullText.length === 0; // 已点名，模型还在想
-  const bubbleText = waitingForText ? "···" : fullText.slice(0, shown);
+  // 已被点名、但还没轮到他的字出现（此时气泡还挂在上一位身上）
+  const waitingToSpeak = speakingId != null && speakingId !== bubbleOwner;
+  const bubbleText = fullText.slice(0, shown);
 
   /**
    * 角色的「可见状态」——由打字进度决定，而不是直接用事件里的 status。
@@ -95,9 +113,19 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
    */
   const displayStatus = (id: RoleId): RoleStatus => {
     const raw = state.roles[id]?.status ?? "idle";
-    if (id !== bubbleOwner) return raw;
-    if (waitingForText) return "raising_hand";
-    if (isRevealing) return "speaking";
+
+    // 已点名、但还在等模型出字的人：举手候场，别提前张嘴说空话。
+    // ⚠️ 必须等上一句（通常是主持人点名那句）**打完字**再举手：
+    //    事件是成批到达的，一收到就举手的话，主持人的话才吐了两个字，
+    //    观众还没读到"请产品经理"，人已经举手把答案剧透了。
+    if (waitingToSpeak && id === speakingId && !isRevealing) {
+      return "raising_hand";
+    }
+
+    // 气泡主人：只要还在吐字就保持说话姿势，吐完才回到事件状态（坐下）。
+    // 这保证了"最后一个字打完"和"人坐下"必然同时发生。
+    if (id === bubbleOwner) return isRevealing ? "speaking" : raw;
+
     return raw;
   };
 

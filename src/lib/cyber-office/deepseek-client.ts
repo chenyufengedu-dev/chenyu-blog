@@ -53,7 +53,9 @@ export function createDeepSeekChatModel(): ChatModel {
       const stream = await client.chat.completions.create({
         model: DEEPSEEK_MODEL,
         messages,
-        temperature: 0.5,
+        // 角色发言要有个性，温度调高让措辞和视角散开。
+        // 主持人的 complete 保持低温（0.4）——它要输出稳定的 JSON，不能发挥。
+        temperature: 0.8,
         max_tokens: LIVE_MEETING_LIMITS.roleMaxTokens,
         stream: true,
       });

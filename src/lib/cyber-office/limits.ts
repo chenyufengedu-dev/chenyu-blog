@@ -2,10 +2,13 @@
 // 这些数字偏保守：够你演示能力，但不至于被陌生访问者刷爆额度。
 export const LIVE_MEETING_LIMITS = {
   maxTurns: 6,
-  moderatorMaxTokens: 420,
+  // 主持人要输出一整段 JSON（含 prompt / hostText 两个中文字段）。
+  // 420 太紧：实测会出现 JSON 写到一半被截断，解析必然失败。
+  // DeepSeek 文档也明确要求 JSON 模式下要配足 max_tokens，否则字符串会被中断。
+  moderatorMaxTokens: 700,
   roleMaxTokens: 160,
-  // 总结要写"核心结论 + 文章大纲 + 下一步行动"，520 太小会把结论从中间硬切断。
-  // 给足预算，同时在 prompt 里限制篇幅（见 buildSummarySystemPrompt），双管齐下。
+  // 总结要写完整五段方案（见 buildSummarySystemPrompt），预算给足，
+  // 同时在 prompt 里限制篇幅（700 字），双管齐下防截断。
   summaryMaxTokens: 1400,
   perIpHourlyLimit: 3,
   perIpHourlyWindow: "1 h",

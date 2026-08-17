@@ -9,7 +9,7 @@ import {
   buildSummaryUserPrompt,
 } from "./prompts";
 import type { ModeratorDecision, TranscriptTurn } from "./prompts";
-import { LIVE_MEETING_LIMITS } from "./limits";
+import { LIVE_MEETING_LIMITS, LIVE_MEETING_MESSAGES } from "./limits";
 
 // 运行时再准备一份 Set，是为了校验模型返回的 speaker 字符串是否真的是合法角色。
 const roleIds = new Set<RoleId>([
@@ -113,10 +113,15 @@ export interface RunOneTurnOptions {
 }
 
 // 问主持人要本轮的调度决策。
-// 大模型的输出天生不保证格式：即使提示词写了"只输出 JSON"，它偶尔仍会多写一句解释、
-// 或者返回空。所以这里做两层防护：
-//   1) 开启 JSON 模式（responseFormat: "json"），由 API 层面强制输出合法 JSON；
-//   2) 万一仍然解析失败，再重试一次。两次都失败才认定是真故障。
+//
+// 大模型的输出天生不保证格式，实测遇到过两种失败：
+//   ① 返回空字符串 —— DeepSeek 官方文档承认 JSON 模式偶发返回空内容；
+//   ② JSON 写到一半被截断 —— max_tokens 不够（已在 limits.ts 调到 700）。
+//
+// 对策是"换策略重试"：第 2 次尝试**关掉 JSON 模式**改用普通模式。
+// 之所以可行，是因为 parseModeratorDecision 用的 extractJsonObject 是
+// "从第一个 { 找到最后一个 }"，纯文本里夹着 JSON 它照样能解析出来。
+// 这样两种失败模式互为备份，不会一条路走到黑。
 async function askModeratorDecision(
   model: ChatModel,
   topic: string,
@@ -130,8 +135,14 @@ async function askModeratorDecision(
 
   let lastError: unknown;
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const text = await model.complete(messages, { responseFormat: "json" });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    // 第 2 次（attempt === 1）故意不用 JSON 模式，对冲"JSON 模式返回空"。
+    const useJsonMode = attempt !== 1;
+
+    const text = await model.complete(messages, {
+      maxTokens: LIVE_MEETING_LIMITS.moderatorMaxTokens,
+      responseFormat: useJsonMode ? "json" : undefined,
+    });
 
     try {
       return parseModeratorDecision(text, participants);
@@ -140,12 +151,44 @@ async function askModeratorDecision(
       // 打印模型到底返回了什么，方便排查；截断避免刷屏。
       console.warn("[cyber-office] 主持人输出不合法，重试", {
         attempt,
+        jsonMode: useJsonMode,
         text: text.slice(0, 200),
       });
     }
   }
 
   throw lastError;
+}
+
+/**
+ * 主持人彻底失灵时的兜底调度。
+ *
+ * 为什么需要：主持人只是"调度器"，它抖一下不该让整场会议崩掉。
+ * 之前一失败就抛异常 → 路由发 error → 前端中断，用户只能重来，
+ * 而重来同样可能在第二三轮再挂一次。
+ *
+ * 规则很笨但绝对可靠：还有没发过言的人就点他；都发过了（或已到轮数上限）就收口。
+ * 返回值必须满足和模型输出一样的约束——speaker 必须是本场参会者且不能是主持人。
+ */
+function fallbackDecision(
+  participants: RoleId[],
+  transcript: TranscriptTurn[],
+  turn: number,
+  maxTurns: number,
+): ModeratorDecision {
+  const spoken = new Set(transcript.map((t) => t.speaker));
+  const next = participants.find((id) => id !== "host" && !spoken.has(id));
+
+  if (!next || turn >= maxTurns - 1) {
+    return { action: "summarize", hostText: "时间差不多了，我们收个尾。" };
+  }
+
+  return {
+    action: "call_on",
+    speaker: next,
+    prompt: "请从你的角色视角说说你的判断。",
+    hostText: "接下来听听你的看法。",
+  };
 }
 
 // 只执行「一轮」：问主持人 → 点名 → 角色发言。
@@ -166,12 +209,22 @@ export async function* runOneTurn({
   if (givenDecision) {
     decision = givenDecision;
   } else {
-    decision = await askModeratorDecision(
-      model,
-      topic,
-      participants,
-      transcript,
-    );
+    try {
+      decision = await askModeratorDecision(
+        model,
+        topic,
+        participants,
+        transcript,
+      );
+    } catch (error) {
+      // 主持人三次都没给出可用决策 —— 不让它拖垮整场会议，退回确定性调度。
+      // 这里只降级、不中断；真正的故障（网络、鉴权、角色发言失败）仍会照常抛出。
+      console.warn(
+        "[cyber-office] 主持人连续失败，改用兜底调度继续会议",
+        error,
+      );
+      decision = fallbackDecision(participants, transcript, turn, maxTurns);
+    }
   }
 
   yield { type: "moderator_decision", decision };
@@ -219,13 +272,27 @@ export async function* runSummary({
   transcript,
   model,
 }: RunSummaryOptions): AsyncGenerator<OfficeEvent> {
-  const summary = await model.complete(
-    [
-      { role: "system", content: buildSummarySystemPrompt() },
-      { role: "user", content: buildSummaryUserPrompt(topic, transcript) },
-    ],
-    { maxTokens: LIVE_MEETING_LIMITS.summaryMaxTokens },
-  );
+  const messages: ChatCompletionMessageParam[] = [
+    { role: "system", content: buildSummarySystemPrompt() },
+    { role: "user", content: buildSummaryUserPrompt(topic, transcript) },
+  ];
+  const options = { maxTokens: LIVE_MEETING_LIMITS.summaryMaxTokens };
+
+  let summary = await model.complete(messages, options);
+
+  // 空返回是偶发的（和主持人那边是同一个毛病），重试一次基本就好了。
+  if (!summary) {
+    console.warn("[cyber-office] 总结返回空，重试一次");
+    summary = await model.complete(messages, options);
+  }
+
+  if (!summary) {
+    // 关键：不能发一个 outline 为空的 summary 事件就当成功了。
+    // 那样前端的 SummaryPanel 拿到空字符串会静默不渲染，
+    // 用户看到的是"会议完成 ✓ + 下面什么都没有"，完全不知道出了什么事。
+    yield { type: "error", message: LIVE_MEETING_MESSAGES.deepseekFailed };
+    return;
+  }
 
   yield { type: "summary", outline: summary };
   yield { type: "meeting_end" };

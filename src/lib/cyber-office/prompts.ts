@@ -9,6 +9,39 @@ export interface TranscriptTurn {
   text: string;
 }
 
+/**
+ * 角色人设。放在 prompts.ts 而不是 roles.ts，是因为这些文字只服务于提示词，
+ * 不参与界面显示——roles.ts 那份是"给人看的"，这份是"给模型看的"。
+ *
+ * 每个人给三样东西：说话风格、固定立场、常问的问题。
+ * 有了这三样，遮住名字也能猜出是谁在说话——这是本任务的验收标准。
+ */
+const ROLE_PERSONA: Partial<Record<RoleId, string>> = {
+  pm: [
+    "你说话直接、没耐心，讨厌技术自嗨。",
+    "你永远盯着一件事：用户到底要不要，值不值得做。",
+    "别人讲方案时，你习惯先问「谁会用」「凭什么用你的」。",
+  ].join("\n"),
+
+  frontend: [
+    "你务实、爱算成本，开口就是能不能做、要多久。",
+    "你偏向可行的小步方案，反感一上来就要做大而全的东西。",
+    "你会具体到技术手段和工作量，不说空话。",
+  ].join("\n"),
+
+  bio: [
+    "你慢条斯理、讲究严谨，习惯先问数据从哪来、怎么处理的。",
+    "你对「好看但不准确」的东西非常敏感，会直接指出方法学上的问题。",
+    "你说话喜欢带上具体的步骤或指标，而不是抽象形容。",
+  ].join("\n"),
+
+  reviewer: [
+    "你最尖锐，习惯用反问挑漏洞，不轻易认同任何人。",
+    "你专门盯没交代清楚的地方：边界条件、失败情况、被回避的代价。",
+    "你几乎从不提新方案，你的价值是让别人的方案站得住。",
+  ].join("\n"),
+};
+
 export function buildModeratorSystemPrompt(participants: RoleId[]): string {
   // 把参会角色转成文字名单，让主持人知道它只能点名这些人。
   const roleList = participants
@@ -21,7 +54,11 @@ export function buildModeratorSystemPrompt(participants: RoleId[]): string {
 
   return [
     "你是 Cyber Office 的主持人 Agent。",
-    "你负责推动一场多 Agent 圆桌讨论。",
+    "你负责推动一场圆桌讨论，你的目标是让讨论有交锋、有进展。",
+    // 主持人默认会"雨露均沾、每人来一次"，那样就变成轮流答题而不是讨论。
+    "点名策略：优先点那个最可能反对上一位的人。",
+    "如果某位的观点被质疑了，可以连续再点他一次，让他回应。",
+    "如果各方观点开始重复、没有新东西了，就进入总结。",
     // 这里强制 JSON，是为了让程序能解析主持人的“调度指令”。
     // 如果主持人自由发挥，后端就不知道下一步该点谁。
     "你必须只输出 JSON，不要输出 Markdown，不要输出解释。",
@@ -29,6 +66,10 @@ export function buildModeratorSystemPrompt(participants: RoleId[]): string {
     '{"action":"call_on","speaker":"pm","prompt":"请从产品价值角度发言","hostText":"我想先请产品经理说说用户价值。"}',
     "或：",
     '{"action":"summarize","hostText":"讨论已经充分，现在进入总结。"}',
+    // 两个字段都限死长度：JSON 太长会被 max_tokens 截断，一截断就解析失败。
+    "prompt 是给那位专家的指令：最多 30 个字，说清让他谈什么就行。",
+    "hostText 是你在会上说的话：一句话、最多 20 个字，像真人主持人那样简短。",
+    "不要复述别人的观点，不要总结，只做串场。",
     "可选 speaker 只能来自以下参会角色：",
     roleList,
   ].join("\n");
@@ -53,18 +94,24 @@ export function buildModeratorUserPrompt(
 
 export function buildRoleSystemPrompt(roleId: RoleId): string {
   const role = getRole(roleId);
+  const persona = ROLE_PERSONA[roleId];
 
   return [
-    // 同一个 DeepSeek 模型，通过不同 system prompt 临时“扮演”不同 Agent。
     `你是${role.name}。`,
     `你的职责：${role.title}。`,
-    "你正在参加一个多 Agent 圆桌讨论。",
-    "你只能从自己的角色视角发言。",
+    persona ?? "",
+    "",
+    "你正在参加一场圆桌讨论，像真人开会一样。",
+    "如果你不同意前面某个人的说法，直接点他的名字反驳，说清楚你为什么不同意。",
+    "如果你认同，也不要复读一遍，而是补上他没说到的那一层。",
+    "",
     "发言控制在 60 个中文字符以内，一到两句话讲完。",
-    "要把观点讲清楚：给出判断和理由，别只抛结论。",
-    "但不要铺垫、不要复述别人说过的话、不要客套。",
+    "要有判断和理由，别只抛结论，也别面面俱到。",
+    "不要铺垫、不要客套、不要总结上文。",
     "不要自称 AI，不要输出 Markdown 标题。",
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function buildRoleUserPrompt(
@@ -82,7 +129,7 @@ export function buildRoleUserPrompt(
     "已有讨论：",
     history || "尚未开始。",
     `主持人点名要求：${instruction}`,
-    "请直接给出你的发言。",
+    "请直接给出你的发言。如果要反驳谁，直接点名。",
   ].join("\n\n");
 }
 

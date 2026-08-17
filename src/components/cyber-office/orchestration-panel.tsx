@@ -78,7 +78,7 @@ function DecisionView({
 }: {
   decision?: ModeratorDecision | null;
   speech?: string;
-}) {
+} = {}) {
   if (!decision) {
     return (
       <p className="text-sm text-text-muted">
@@ -105,6 +105,52 @@ function DecisionView({
   );
 }
 
+/**
+ * 多轮回看：用轮次按钮切换，而不是把所有轮次一次性铺开。
+ * 只有一轮时不显示按钮，避免为一条内容白占一行。
+ *
+ * 调用方要给 key（通常是选中的节点 id），这样切换角色时组件重新挂载、
+ * 轮次自动回到最新一轮，不会残留上一个角色的选择。
+ */
+function RoundHistory({
+  unit,
+  items,
+}: {
+  unit: string; // 计量单位："轮" / "次发言"
+  items: { decision?: ModeratorDecision; speech?: string }[];
+}) {
+  // 默认看最新一轮——那通常是用户最关心的
+  const [round, setRound] = useState(items.length - 1);
+
+  if (items.length === 0) return <DecisionView />;
+
+  const index = Math.min(round, items.length - 1);
+  const current = items[index];
+
+  return (
+    <>
+      {items.length > 1 && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {items.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setRound(i)}
+              className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                i === index
+                  ? "border-accent bg-accent-subtle text-accent"
+                  : "border-border bg-background text-text-muted hover:border-accent/40 hover:text-accent"
+              }`}
+            >
+              第 {i + 1} {unit}
+            </button>
+          ))}
+        </div>
+      )}
+      <DecisionView decision={current?.decision} speech={current?.speech} />
+    </>
+  );
+}
+
 type NodeKey = "host" | "output" | RoleId;
 
 export default function OrchestrationPanel({ state }: { state: MeetingState }) {
@@ -124,21 +170,41 @@ export default function OrchestrationPanel({ state }: { state: MeetingState }) {
   const toggle = (key: NodeKey) =>
     setSelected((cur) => (cur === key ? null : key)); // 再点一次取消回看
 
-  // 详情区：选中了就回看该节点；没选中就跟随实时（取决策历史的最后一条）。
+  // 详情区：选中了就回看该节点的**全部**轮次；没选中就跟随实时（最后一条决策）。
   function renderDetail() {
+    // 主持人：它每一轮都做决策，按轮次回看
     if (selected === "host") {
-      return <DecisionView decision={state.decisions.at(-1)} />;
+      return (
+        <RoundHistory
+          key="host"
+          unit="轮"
+          items={state.decisions.map((decision) => ({ decision }))}
+        />
+      );
     }
+
     if (selected && selected !== "output") {
       const id = selected as RoleId;
-      const decision = [...state.decisions]
-        .reverse()
-        .find((d) => d.action === "call_on" && d.speaker === id);
-      const speech = [...state.transcript]
-        .reverse()
-        .find((t) => t.speaker === id)?.text;
-      return <DecisionView decision={decision} speech={speech} />;
+      // 这个角色被点名的每一次，和他说过的每一句。
+      // 两者按先后顺序一一对应：第 N 次点名 → 第 N 次发言。
+      const decisions = state.decisions.filter(
+        (d) => d.action === "call_on" && d.speaker === id,
+      );
+      const speeches = state.transcript.filter((t) => t.speaker === id);
+      const rounds = Math.max(decisions.length, speeches.length);
+
+      return (
+        <RoundHistory
+          key={id}
+          unit="次发言"
+          items={Array.from({ length: rounds }, (_, i) => ({
+            decision: decisions[i],
+            speech: speeches[i]?.text,
+          }))}
+        />
+      );
     }
+
     // 未选中：实时当前决策
     return <DecisionView decision={state.decisions.at(-1) ?? null} />;
   }

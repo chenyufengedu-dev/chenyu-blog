@@ -43,7 +43,7 @@
 
 ---
 
-- [ ] **Step 1: `src/lib/cyber-office/prompts.ts` —— 重写总结 Agent 的人设**
+- [x] **Step 1: `src/lib/cyber-office/prompts.ts` —— 重写总结 Agent 的人设**
 
 把 `buildSummarySystemPrompt` **整个函数**替换为：
 
@@ -85,7 +85,7 @@ export function buildSummarySystemPrompt(): string {
 
 ---
 
-- [ ] **Step 2: `src/lib/cyber-office/prompts.ts` —— 让它明确知道要回答什么**
+- [x] **Step 2: `src/lib/cyber-office/prompts.ts` —— 让它明确知道要回答什么**
 
 把 `buildSummaryUserPrompt` 的 `return` 那一行替换为：
 
@@ -102,7 +102,7 @@ export function buildSummarySystemPrompt(): string {
 
 ---
 
-- [ ] **Step 3: `src/lib/cyber-office/sample-meeting.ts` —— 样本结论换成新格式**
+- [x] **Step 3: `src/lib/cyber-office/sample-meeting.ts` —— 样本结论换成新格式**
 
 演示会议里的结论是写死的，还停留在旧格式。不改的话，访客点「看一场演示」看到的仍是旧模板。
 
@@ -135,7 +135,7 @@ export function buildSummarySystemPrompt(): string {
 
 ---
 
-- [ ] **Step 4: 校验**
+- [x] **Step 4: 校验**
 
 ```bash
 npx tsc --noEmit && npm run lint && npm run test
@@ -143,7 +143,7 @@ npx tsc --noEmit && npm run lint && npm run test
 
 ---
 
-- [ ] **Step 5: 实机验证**
+- [x] **Step 5: 实机验证**
 
 ```bash
 npm run dev
@@ -167,7 +167,7 @@ npm run dev
 
 ---
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 npx tsc --noEmit && npm run build

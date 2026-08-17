@@ -8,7 +8,6 @@ export function createInitialState(): MeetingState {
     participants: [],
     roles: {},
     activeSpeaker: null,
-    hostText: "",
     summary: null,
     decisions: [],
     transcript: [],
@@ -68,10 +67,12 @@ export function applyEvent(
     }
 
     case "host_speak": {
-      // 主持人串场：① 更新 hostText；② 让主持人小人进入 speaking（有说话动作）；
-      // ③ 把这句归档进发言记录（之前漏了主持人）。activeSpeaker 置空 = 台上没有"被点名的角色"。
+      // 主持人串场：① 让主持人小人进入 speaking（有说话动作）；
+      // ② 把这句归档进发言记录，和其他角色走同一条路径——舞台就是从
+      //    transcript 取"最后一句"来显示的，不需要再单独存一份台词。
+      // activeSpeaker 置空 = 台上没有"被点名的角色"。
       const withHost = patchRole(
-        { ...state, hostText: event.text, activeSpeaker: null },
+        { ...state, activeSpeaker: null },
         "host",
         { status: "speaking", bubble: event.text },
       );

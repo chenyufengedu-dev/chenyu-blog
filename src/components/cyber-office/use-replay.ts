@@ -4,25 +4,24 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { OfficeEvent } from "@/lib/cyber-office/types";
 import { applyEvent, createInitialState } from "@/lib/cyber-office/reducer";
 
-// 不同事件的播放间隔（毫秒）。
+// 事件之间的间隔（毫秒）——只负责"事件什么时候到达"，不负责"文字怎么播"。
+//
+// ⚠️ 职责划分：逐字显示的节奏由 office-scene 的节奏控制器统一掌管
+//    （所有人同一速度、说完停一拍）。这里再做一遍逐字节奏就会两套时钟叠加，
+//    结果是回放明显比实时慢，而且这里的标点停顿会被显示层覆盖、变成死代码。
+//    所以 token 用一个略快于显示速度的固定值：保证事件不落后于显示，
+//    真正的观感由显示层决定。
 function delayFor(e: OfficeEvent): number {
   switch (e.type) {
-    case "token": {
-      // 逐字节奏：句末停顿最久、逗号次之，普通字带随机抖动。
-      // 固定 40ms 会均匀得像机器打字，加了停顿和抖动才有人在说话的感觉。
-      const ch = e.delta;
-      if (/[。！？…]/.test(ch)) return 300;
-      if (/[，、；：]/.test(ch)) return 170;
-      return 32 + Math.random() * 28; // 32~60ms
-    }
-    case "host_speak":
-      return 900;
-    case "call_on":
-      return 700;
+    case "token":
+      return 30; // 略快于显示层的 55ms/字，让显示层当限速器
     case "speaking_start":
-      return 250;
+      return 200;
+    case "host_speak":
+    case "call_on":
     case "speaking_end":
-      return 600; // 说完多留一点余韵，再进下一轮
+      // 换人时的"呼吸感"由显示层的结尾停顿提供，这里只留一点结构性间隔。
+      return 300;
     case "summary":
       return 1000;
     default:

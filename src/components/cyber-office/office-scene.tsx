@@ -45,7 +45,15 @@ const DEFAULT_PARTICIPANTS: RoleId[] = [
 // 近大远小：越靠下（y 越大）越大
 const seatScale = (y: number) => 0.62 + (y / SCENE_H) * 0.6;
 
-export default function OfficeScene({ state }: { state: MeetingState }) {
+export default function OfficeScene({
+  state,
+  skipToken = 0,
+}: {
+  state: MeetingState;
+  // 每次用户点「跳过」就 +1。节奏在这一层，所以跳过也必须在这一层生效——
+  // 只把剩余事件塞给状态层是没用的，显示层仍会按自己的速度慢慢播。
+  skipToken?: number;
+}) {
   const participants =
     state.participants.length > 0 ? state.participants : DEFAULT_PARTICIPANTS;
 
@@ -73,36 +81,73 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
   // 会议结束后不再留着最后一句气泡：散场了画面就该干净，
   // 否则用户看着一个挂着的气泡，分不清会议是结束了还是卡住了。
   const meetingEnded = state.phase === "ended";
-  const bubbleOwner = meetingEnded
-    ? undefined
-    : (speakerWithText ?? lastLine?.speaker);
-  const fullText = speakerWithText
-    ? (state.roles[speakerWithText]?.bubble ?? "")
-    : (lastLine?.text ?? "");
 
-  // ===== 打字机：整个场景唯一的"说话时钟" =====
-  // 放在这里而不是气泡组件内部，是因为角色的动作也要跟着它走。
-  // 否则会出现"人已经坐下了、头顶还在慢慢吐字"这种脱节。
+  // 会议状态里"此刻该显示的那句话"。注意它只是**目标**，
+  // 真正显示什么由下面的节奏控制器决定。
+  const targetLine = meetingEnded
+    ? null
+    : speakerWithText
+      ? { owner: speakerWithText, text: state.roles[speakerWithText]!.bubble }
+      : lastLine
+        ? { owner: lastLine.speaker, text: lastLine.text }
+        : null;
+
+  // ===== 节奏控制器：整个场景唯一的"说话时钟" =====
+  //
+  // 为什么需要它：主持人的话是 host_speak 事件**一次性**带来全文的，
+  // 而角色发言是流式逐字来的。两者速度机制不同，直接显示的话
+  // 主持人会"瞬间说完"、角色却慢慢吐字，节奏完全不统一。
+  //
+  // 它做两件事：
+  //   ① 所有人的话都按同一速度播（不管文字是怎么到达的）；
+  //   ② 一句播完后**必须停顿一拍**，才允许切给下一个人 —— 真人对话里
+  //      一句话说完到下一句之间总有一个呼吸的节拍，现在这个间隔是
+  //      刻意留出来的，而不是"等模型回复"的副产品。
+  const REVEAL_MS = 55; // 每个字的间隔。要比模型吐字更慢，才能当节拍器
+  const HOLD_TICKS = 12; // 说完之后额外停顿的拍数（约 660ms）
+
+  const [line, setLine] = useState<{ owner: RoleId; text: string } | null>(
+    null,
+  );
   const [shown, setShown] = useState(0);
-  const [prevText, setPrevText] = useState(fullText);
 
-  // 换了新的一句（文本变短 = 上一句被清空重开）就把进度归零。
-  // 用 React 官方的"渲染期调整状态"写法，避开 set-state-in-effect 规则。
-  if (fullText !== prevText) {
-    setPrevText(fullText);
-    if (fullText.length < prevText.length) setShown(0);
+  // 当前这句（含结尾停顿）是不是播完了
+  const linePlayedOut = !line || shown >= line.text.length + HOLD_TICKS;
+
+  // 渲染期同步目标 —— React 官方的"渲染期调整状态"写法，
+  // 避开 set-state-in-effect 规则。
+  if (targetLine && line && targetLine.owner === line.owner) {
+    // 同一个人在继续说：文字增长立刻跟上，进度不重置
+    if (targetLine.text !== line.text) setLine(targetLine);
+  } else if (linePlayedOut) {
+    // 换人（或散场）：必须等上一句连同停顿都播完，才允许交接。
+    // 这一条就是"节拍"的来源。
+    if (targetLine?.owner !== line?.owner || targetLine?.text !== line?.text) {
+      setLine(targetLine);
+      setShown(0);
+    }
+  }
+
+  // 跳过：把当前这句直接播到底（连结尾停顿一起跳过），立刻放行下一句。
+  const [prevSkip, setPrevSkip] = useState(skipToken);
+  if (skipToken !== prevSkip) {
+    setPrevSkip(skipToken);
+    if (line) setShown(line.text.length + HOLD_TICKS);
   }
 
   useEffect(() => {
-    if (shown >= fullText.length) return;
-    const timer = setTimeout(() => setShown((n) => n + 1), 24);
+    if (!line) return;
+    if (shown >= line.text.length + HOLD_TICKS) return;
+    const timer = setTimeout(() => setShown((n) => n + 1), REVEAL_MS);
     return () => clearTimeout(timer);
-  }, [shown, fullText]);
+  }, [shown, line]);
 
-  const isRevealing = shown < fullText.length; // 还在吐字
+  const bubbleOwner = line?.owner;
+  const bubbleText = line ? line.text.slice(0, shown) : "";
+  // 只有"还在吐字"才算说话；结尾那段停顿不算（那时人已经坐下、气泡驻留）
+  const isRevealing = !!line && shown < line.text.length;
   // 已被点名、但还没轮到他的字出现（此时气泡还挂在上一位身上）
   const waitingToSpeak = speakingId != null && speakingId !== bubbleOwner;
-  const bubbleText = fullText.slice(0, shown);
 
   /**
    * 角色的「可见状态」——由打字进度决定，而不是直接用事件里的 status。
@@ -114,17 +159,21 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
   const displayStatus = (id: RoleId): RoleStatus => {
     const raw = state.roles[id]?.status ?? "idle";
 
-    // 已点名、但还在等模型出字的人：举手候场，别提前张嘴说空话。
-    // ⚠️ 必须等上一句（通常是主持人点名那句）**打完字**再举手：
-    //    事件是成批到达的，一收到就举手的话，主持人的话才吐了两个字，
-    //    观众还没读到"请产品经理"，人已经举手把答案剧透了。
-    if (waitingToSpeak && id === speakingId && !isRevealing) {
-      return "raising_hand";
-    }
-
-    // 气泡主人：只要还在吐字就保持说话姿势，吐完才回到事件状态（坐下）。
-    // 这保证了"最后一个字打完"和"人坐下"必然同时发生。
+    // ① 气泡主人：只要还在吐字就保持说话姿势，吐完才回到事件状态（坐下）。
+    //    这保证了"最后一个字打完"和"人坐下"必然同时发生。
     if (id === bubbleOwner) return isRevealing ? "speaking" : raw;
+
+    // ② ⚠️ 当前这句还没说完时，其他人一律安静，不许变姿势。
+    //    事件是成批到达的（host_speak / call_on / speaking_start 同一个 tick），
+    //    所以被点名的人在事件层面**早就**是 raising_hand 甚至 speaking 了。
+    //    若这里直接放行 raw，主持人的话才吐两个字，那人就已经举手/起身，
+    //    把观众还没读到的"请产品经理"提前剧透了。
+    //    这一条必须挡在 raw 之前——只堵"等待发言"那条路是不够的，
+    //    raw 会从后门把 call_on 设置的姿势原样放出去。
+    if (isRevealing) return "idle";
+
+    // ③ 上一句已说完、被点名的人自己的字还没来 → 举手候场，别提前张嘴。
+    if (waitingToSpeak && id === speakingId) return "raising_hand";
 
     return raw;
   };
@@ -224,9 +273,12 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
                 name={role.name}
                 status={status}
                 showName={false}
-                dimmed={
-                  state.activeSpeaker != null && state.activeSpeaker !== id
-                }
+                // ⚠️ 必须跟 bubbleOwner 走，不能用事件层的 activeSpeaker。
+                // 画面上的气泡/姿势/名牌都由节奏控制器决定，而 activeSpeaker 是
+                // 事件层的原始值，两者经常不同步：
+                //   · 主持人说话时 activeSpeaker 是 null → 谁都不虚化，没有焦点；
+                //   · 主持人的气泡还挂着、事件层却已切到下一位 → 高亮的是错的人。
+                dimmed={bubbleOwner != null && id !== bubbleOwner}
               />
             </div>
           );
@@ -253,7 +305,11 @@ export default function OfficeScene({ state }: { state: MeetingState }) {
         {participants.map((id, i) => {
           const seat = SEATS[i];
           if (!seat) return null;
-          const active = state.activeSpeaker === id;
+          // 同样跟 bubbleOwner 走：橙色高亮只属于"画面上正在说话的人"，
+          // 而那个人的名牌已经被下一行隐掉了 —— 所以这里画出来的名牌
+          // 必然都是旁听者，不该有人是橙色的。用事件层的 activeSpeaker
+          // 会把还没轮到出场的下一位提前点亮。
+          const active = id === bubbleOwner;
           // ① 头顶正挂着气泡的人，名字已经写在气泡里了，这里不再画浮动名牌。
           //    注意要跟"气泡归属"一致而不是只看 speaking——气泡在发言结束后
           //    还会驻留一会儿，那期间名牌若冒出来就会和气泡撞在一起。

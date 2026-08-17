@@ -70,7 +70,8 @@ export interface MeetingState {
   // Record<string, RoleRuntime> 表示"一个对象，键是字符串、值是 RoleRuntime"。
   roles: Record<string, RoleRuntime>;
   activeSpeaker: RoleId | null; // 当前发言者；没人发言时是 null
-  hostText: string; // 主持人最近一句话
+  // 注：主持人的台词不再单独存字段。它和其他人的发言一样进 transcript，
+  // 画面上由舞台的节奏控制器统一取用——存两份必然会不同步。
 
   summary: string | null; // 总结产物；还没总结时是 null
   // 注：不再单独存 lastDecision——它恒等于 decisions.at(-1)，属冗余状态。

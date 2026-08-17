@@ -77,10 +77,15 @@ function StatusBar({ state }: { state: MeetingState }) {
   // 三种阶段用不同文案；讨论中额外显示当前发言者。
   let label = "";
   if (state.phase === "running") {
-    const who = state.activeSpeaker
-      ? getRole(state.activeSpeaker).name
-      : "主持人";
-    label = `讨论中 · 当前：${who}`;
+    // 要和舞台上显示的那句话保持一致：被点名的人在吐出第一个字之前，
+    // 画面上还挂着上一位的气泡，此时状态条就不该抢先报他的名字。
+    // 直接用 activeSpeaker 会出现"状态条说产品经理、气泡里是主持人"。
+    const speakerWithText =
+      state.activeSpeaker && state.roles[state.activeSpeaker]?.bubble
+        ? state.activeSpeaker
+        : undefined;
+    const who = speakerWithText ?? state.transcript.at(-1)?.speaker;
+    label = who ? `讨论中 · 当前：${getRole(who).name}` : "讨论中";
   } else if (state.phase === "ended") {
     label = state.error ? "会议中断" : "会议完成 ✓";
   } else {
@@ -105,6 +110,8 @@ export default function CyberOffice() {
   const live = useLiveMeeting();
   // 用户手动选择的模式。
   const [modeChoice, setModeChoice] = useState<"replay" | "live">("replay");
+  // 「跳过打字机」的信号：每点一次 +1，传给舞台让它把当前这句直接播到底。
+  const [skipToken, setSkipToken] = useState(0);
   // 实际展示的模式：只要有实时会议在跑或被暂停（包括刷新后恢复出来的那场），
   // 页面就必然显示实时模式。用"算出来"代替在 effect 里 setState——
   // 后者会触发级联渲染，React 19 的 lint 规则也直接禁止。
@@ -273,13 +280,18 @@ export default function CyberOffice() {
           {/* 跳过打字机：原本在字幕条右上角 */}
           {mode === "replay" && replay.isPlaying && state.activeSpeaker && (
             <button
-              onClick={replay.skip}
+              onClick={() => {
+                // 两层都要推进：事件层把剩余 token 立刻发完，
+                // 显示层把当前这句直接播到底。只做前者的话按钮看着像没反应。
+                replay.skip();
+                setSkipToken((n) => n + 1);
+              }}
               className="self-start text-xs text-text-muted transition-colors hover:text-accent"
             >
               跳过打字机 ⏭
             </button>
           )}
-          <OfficeScene state={state} />
+          <OfficeScene state={state} skipToken={skipToken} />
         </div>
       </div>
 
